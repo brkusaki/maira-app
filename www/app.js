@@ -980,6 +980,7 @@ N.iniciar().then(agendarDepois);
 if (!NATIVO && 'serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
 render();
 setTimeout(() => procurarAtualizacao(), 3000);
+try { const vv = +localStorage.getItem('maira:versaoVista') || 0; if (VERSAO && vv && VERSAO > vv) setTimeout(() => toast(`App atualizado para a versão ${VERSAO} ✨`, 4000), 800); if (VERSAO) localStorage.setItem('maira:versaoVista', VERSAO); } catch {}
 function boasVindas() {
   modal(`${ILUS ? `<img class="bv-ilus" src="${ILUS}" alt="">` : ''}<h2 style="font-size:1.6rem;margin-bottom:6px">Oi, ${esc(cfg.mae)}! 💛</h2>
   <p>O ${esc(cfg.pai)} fez esse app só pra você e pra ${esc(cfg.bebe)}: contrações, mala da maternidade, mamadas, fraldas, remédios, vacinas, momentos e muito mais.</p>
