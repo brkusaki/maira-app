@@ -54,11 +54,19 @@ jobs:
       - name: Chave de assinatura (segredo do repositório)
         env:
           KS: ${{ secrets.ANDROID_DEBUG_KEYSTORE }}
-        run: mkdir -p ~/.android && echo "$KS" | base64 -d > ~/.android/debug.keystore
+        run: |
+          echo "$KS" | base64 -d > "$RUNNER_TEMP/maira.keystore"
+          echo "MAIRA_KEYSTORE=$RUNNER_TEMP/maira.keystore" >> "$GITHUB_ENV"
       - name: Compilar
         working-directory: android
         run: chmod +x gradlew && ./gradlew assembleDebug --no-daemon
       - run: cp android/app/build/outputs/apk/debug/app-debug.apk Maira-e-Maya.apk
+      - name: Conferir assinatura (falha se não for a chave fixa)
+        run: |
+          A=$(keytool -printcert -jarfile Maira-e-Maya.apk | grep -m1 'SHA256:' | awk '{print $2}')
+          B=$(keytool -list -v -keystore "$MAIRA_KEYSTORE" -storepass android | grep -m1 'SHA256:' | awk '{print $2}')
+          echo "APK: $A"; echo "Chave: $B"
+          test -n "$A" && test "$A" = "$B"
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ github.run_number }}
