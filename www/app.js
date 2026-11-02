@@ -7,6 +7,8 @@ const LS = 'maira:v1';
 const MIN = 60e3, H = 60 * MIN, DIA = 24 * H;
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const ic = (n, cls = '') => `<svg class="i ${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${(window.ICONES || {})[n] || ''}</svg>`;
+let ILUS = '';
 
 /* ---------------- Dados ---------------- */
 function carregar() { try { return JSON.parse(localStorage.getItem(LS)) || {}; } catch { return {}; } }
@@ -51,7 +53,7 @@ const ladoNome = l => ({ E: 'esquerdo', D: 'direito' }[l] || '');
 function toast(msg, ms = 2600) { const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => t.hidden = true, ms); }
 function modal(html) { $('#modalBox').innerHTML = html; $('#modal').hidden = false; }
 function fecharModal() { $('#modal').hidden = true; $('#modalBox').innerHTML = ''; }
-$('#modal').addEventListener('click', e => { if (e.target.id === 'modal') fecharModal(); });
+$('#modal').addEventListener('click', e => { if (e.target.id === 'modal' && cfg.iniciado) fecharModal(); });
 
 function vibrar(ms = 30) { try { navigator.vibrate && navigator.vibrate(ms); } catch {} }
 
@@ -175,12 +177,21 @@ function ir(tab, sub) { V.tab = tab; if (sub) V.sub[tab] = sub; render(); window
 $('#nav').addEventListener('click', e => { const b = e.target.closest('button'); if (b) ir(b.dataset.tab); });
 const abas = (tab, itens) => `<div class="abas">${itens.map(([k, n]) => `<button data-a="sub" data-tab="${tab}" data-sub="${k}" class="${V.sub[tab] === k ? 'on' : ''}">${n}</button>`).join('')}</div>`;
 
+const SB = plugin('StatusBar');
 function tema() {
   const h = new Date().getHours();
   const noite = cfg.tema === 'noite' || (cfg.tema === 'auto' && (h >= 19 || h < 6));
-  document.body.classList.toggle('noite', noite);
-  $('meta[name=theme-color]').content = noite ? '#17110f' : '#f6ede6';
+  const R = document.documentElement;
+  R.classList.toggle('noite', noite);
+  const cor = noite ? '#15100e' : '#f7efe9';
+  $('meta[name=theme-color]').content = cor;
+  $('#btnTema').innerHTML = ic(noite ? 'sun' : 'moon');
+  if (SB) { SB.setBackgroundColor({ color: cor }).catch(() => {}); SB.setStyle({ style: noite ? 'DARK' : 'LIGHT' }).catch(() => {}); }
+  const f = fotoFundo();
+  R.classList.toggle('foto', !!f); $('#fundo').hidden = !f;
+  if (f) { $('#fundo').style.backgroundImage = `url(${f})`; R.style.setProperty('--veu', cfg.veu ?? 0.55); }
 }
+function fotoFundo() { try { return localStorage.getItem('maira:fundo') || ''; } catch { return ''; } }
 
 function render() {
   tema();
@@ -194,69 +205,69 @@ function render() {
 }
 
 /* ---------------- Telas: Início ---------------- */
+function tile(icone, cor, txt, attrs, sub = '') { return `<button class="acao" ${attrs}><i class="bolha b-${cor}">${ic(icone)}</i><span>${txt}${sub ? `<small>${sub}</small>` : ''}</span></button>`; }
+function banner(icone, cor, txt, desde, attrs) { return `<button class="card linha entre" ${attrs}><span class="linha"><i class="bolha b-${cor}">${ic(icone)}</i><b>${txt}</b></span><b class="num" data-desde="${desde}"></b></button>`; }
+function capa(rot, grande, sub, extra = '') {
+  return `<div class="capa ${ILUS ? 'com-ilus' : ''}"><div class="deco">${ic(nascida() ? 'heart' : 'moon')}</div>${ILUS ? `<img class="ilus" src="${ILUS}" alt="">` : ''}
+  <div class="txt"><div class="rotulo">${rot}</div><div class="grande">${grande}</div><div class="sub">${sub}</div>${extra}</div></div>`;
+}
 function vInicio() {
   let h = '';
   const g = gestacao();
-  // banners de cronômetros ativos
-  if (S.ativo.contr) h += `<div class="card alerta linha entre" data-a="ir" data-tab="parto" data-sub="contr"><b>⏱️ Contração em andamento</b><span class="num" data-desde="${S.ativo.contr}"></span></div>`;
-  if (S.ativo.mamada) h += `<div class="card destaque linha entre" data-a="ir" data-tab="maya" data-sub="mamadas"><b>🍼 Mamando (${ladoNome(S.ativo.mamada.lado)})</b><span class="num" data-desde="${S.ativo.mamada.ini}"></span></div>`;
-  if (S.ativo.sono) h += `<div class="card destaque linha entre" data-a="ir" data-tab="maya" data-sub="sono"><b>😴 ${esc(cfg.bebe)} dormindo</b><span class="num" data-desde="${S.ativo.sono}"></span></div>`;
-  if (S.ativo.chutes) h += `<div class="card destaque linha entre" data-a="ir" data-tab="parto" data-sub="chutes"><b>👣 Contando movimentos: ${S.ativo.chutes.n}/10</b><span class="num" data-desde="${S.ativo.chutes.ini}"></span></div>`;
+  if (S.ativo.contr) h += banner('timer', 'alerta', 'Contração em andamento', S.ativo.contr, 'data-a="ir" data-tab="parto" data-sub="contr"');
+  if (S.ativo.mamada) h += banner('milk', 'rosa', 'Mamando · ' + ladoNome(S.ativo.mamada.lado), S.ativo.mamada.ini, 'data-a="ir" data-tab="maya" data-sub="mamadas"');
+  if (S.ativo.sono) h += banner('moon', 'lilas', esc(cfg.bebe) + ' dormindo', S.ativo.sono, 'data-a="ir" data-tab="maya" data-sub="sono"');
+  if (S.ativo.chutes) h += banner('footprints', 'ouro', `Movimentos: ${S.ativo.chutes.n}/10`, S.ativo.chutes.ini, 'data-a="ir" data-tab="parto" data-sub="chutes"');
 
   if (!nascida()) {
-    if (g) {
-      h += `<div class="card destaque">
-        <div class="mute">Data provável do parto: ${data(dataLocal(cfg.dpp))}</div>
-        <div class="grande">${g.falta > 0 ? g.falta + (g.falta === 1 ? ' dia' : ' dias') : g.falta === 0 ? 'É hoje! 💛' : 'Passou ' + -g.falta + (g.falta === -1 ? ' dia' : ' dias')}</div>
-        <div class="mute" style="margin-bottom:8px">${g.falta > 0 ? 'para a DPP' : 'A ' + esc(cfg.bebe) + ' chega quando estiver pronta'}</div>
-        <div class="barra"><i style="width:${g.pct}%"></i></div></div>`;
-    } else h += `<div class="card" data-a="ajustes"><b>Coloque a data provável do parto</b><p class="mute">Toque aqui para configurar.</p></div>`;
+    if (g) h += capa('DPP · ' + data(dataLocal(cfg.dpp)),
+      g.falta > 0 ? g.falta + (g.falta === 1 ? ' dia' : ' dias') : g.falta === 0 ? 'É hoje!' : `+${-g.falta} ${g.falta === -1 ? 'dia' : 'dias'}`,
+      g.falta > 0 ? `para conhecer a ${esc(cfg.bebe)}` : `A ${esc(cfg.bebe)} chega quando estiver pronta 💛`,
+      `<div class="barra"><i style="width:${g.pct}%"></i></div>`);
+    else h += `<button class="capa" style="width:100%;text-align:left" data-a="ajustes"><div class="deco">${ic('calendar-heart')}</div><div class="rotulo">Primeiro passo</div><h2 style="margin:6px 0 2px">Coloque a data provável do parto</h2><div class="sub">Toque aqui</div></button>`;
   } else {
-    const i = idadeBebe();
-    h += `<div class="card destaque"><div class="mute">${esc(cfg.bebe)} nasceu ${data(+new Date(cfg.nasc))} às ${hora(+new Date(cfg.nasc))}</div><div class="grande">${i.d === 0 ? 'Bem-vinda! 🎉' : i.txt}</div>${cfg.pesoNasc ? `<div class="mute">Nasceu com ${esc(cfg.pesoNasc)} g${cfg.compNasc ? ' e ' + esc(cfg.compNasc) + ' cm' : ''}</div>` : ''}</div>`;
+    const i = idadeBebe(); const n = +new Date(cfg.nasc);
+    h += capa(`Nasceu ${data(n)} às ${hora(n)}`, i.d === 0 ? 'Bem-vinda!' : i.txt, cfg.pesoNasc ? `${esc(cfg.pesoNasc)} g${cfg.compNasc ? ' · ' + esc(cfg.compNasc) + ' cm' : ''}` : esc(cfg.bebe));
   }
 
   const rec = recadoDoDia();
-  if (rec) h += `<div class="card"><div class="mute" style="font-size:.85rem">Recado do ${esc(cfg.pai)} 💛</div><p style="font-size:1.05rem">${esc(rec)}</p></div>`;
+  if (rec) h += `<div class="card"><div class="linha" style="margin-bottom:6px"><i class="bolha b-rosa" style="width:34px;height:34px;border-radius:11px">${ic('heart')}</i><span class="rotulo">Recado do ${esc(cfg.pai)}</span></div><p style="font-size:1.08rem;font-weight:600;margin:4px 0 0">${esc(rec)}</p></div>`;
 
   if (!nascida()) {
     const tot = Object.values(C.mala).flat().length + Object.values(S.extraMala).flat().length;
     const feitos = Object.keys(S.chk).filter(k => k.startsWith('mala:') && S.chk[k]).length;
     h += `<div class="grade">
-      <button class="acao" data-a="ir" data-tab="parto" data-sub="contr"><span>⏱️</span>Contrações</button>
-      <button class="acao" data-a="ir" data-tab="parto" data-sub="chutes"><span>👣</span>Movimentos</button>
-      <button class="acao" data-a="ir" data-tab="parto" data-sub="mala"><span>🧳</span>Mala ${feitos}/${tot}</button>
-      <button class="acao" data-a="ir" data-tab="mae" data-sub="bruno"><span>📲</span>Chamar ${esc(cfg.pai)}</button>
+      ${tile('timer', 'rosa', 'Contrações', 'data-a="ir" data-tab="parto" data-sub="contr"', 'cronômetro')}
+      ${tile('footprints', 'ouro', 'Movimentos', 'data-a="ir" data-tab="parto" data-sub="chutes"', 'contar até 10')}
+      ${tile('luggage', 'verde', 'Mala', 'data-a="ir" data-tab="parto" data-sub="mala"', `${feitos} de ${tot} itens`)}
+      ${tile('message-circle-heart', 'lilas', 'Chamar ' + esc(cfg.pai), 'data-a="ir" data-tab="mae" data-sub="bruno"', 'pelo WhatsApp')}
     </div>
-    <button class="btn bloco" style="margin-top:14px;min-height:56px;font-size:1.05rem" data-a="nasceu">🎉 A ${esc(cfg.bebe)} nasceu!</button>
-    <div class="card"><h3>Quando ir para a maternidade?</h3><p class="mute">Bolsa rompeu, sangramento, ${esc(cfg.bebe)} mexendo menos ou contrações regulares.</p><button class="btn sec mini" data-a="ir" data-tab="parto" data-sub="quando">Ver sinais</button></div>`;
+    <button class="btn destaque-btn" data-a="nasceu">${ic('party-popper')} A ${esc(cfg.bebe)} nasceu!</button>
+    <button class="card linha" data-a="ir" data-tab="parto" data-sub="quando"><i class="bolha b-alerta">${ic('siren')}</i><span><h3>Quando ir para a maternidade?</h3><small>Bolsa, sangramento, ${esc(cfg.bebe)} mexendo menos, contrações.</small></span></button>`;
   } else {
     const u = ultimos(S.mam)[0];
     const fh = hojeDe(S.fr, 't');
     const sono24 = ult24(S.sono).reduce((s, x) => s + (x.fim - x.ini), 0) + (S.ativo.sono ? Date.now() - S.ativo.sono : 0);
-    const iv = idadeBebe();
-    const espXixi = Math.min(6, iv.diaVida);
+    const espXixi = Math.min(6, idadeBebe().diaVida);
     h += `<div class="grade3">
-      <button class="acao" data-a="ir" data-tab="maya" data-sub="mamadas"><span>🍼</span>Mamada</button>
-      <button class="acao" data-a="fralda" data-x="1" data-c="0"><span>💧</span>Xixi</button>
-      <button class="acao" data-a="fralda" data-x="0" data-c="1"><span>💩</span>Cocô</button>
-      <button class="acao" data-a="sono"><span>${S.ativo.sono ? '☀️' : '😴'}</span>${S.ativo.sono ? 'Acordou' : 'Dormiu'}</button>
-      <button class="acao" data-a="ir" data-tab="mae" data-sub="remedios"><span>💊</span>Remédios</button>
-      <button class="acao" data-a="ir" data-tab="mae" data-sub="bruno"><span>📲</span>${esc(cfg.pai)}</button>
+      ${tile('milk', 'rosa', 'Mamada', 'data-a="ir" data-tab="maya" data-sub="mamadas"')}
+      ${tile('droplet', 'azul', 'Xixi', 'data-a="fralda" data-x="1" data-c="0"')}
+      ${tile('coco', 'ouro', 'Cocô', 'data-a="fralda" data-x="0" data-c="1"')}
+      ${tile(S.ativo.sono ? 'sun' : 'moon', 'lilas', S.ativo.sono ? 'Acordou' : 'Dormiu', 'data-a="sono"')}
+      ${tile('pill', 'verde', 'Remédios', 'data-a="ir" data-tab="mae" data-sub="remedios"')}
+      ${tile('message-circle-heart', 'rosa', esc(cfg.pai), 'data-a="ir" data-tab="mae" data-sub="bruno"')}
     </div>
-    <div class="card"><div class="linha entre"><h3>🍼 Última mamada</h3>${u ? `<small data-rel="${u.ini}"></small>` : ''}</div>
-      ${u ? `<p>Às ${hora(u.ini)} · ${u.tipo === 'peito' ? 'terminou no lado <b>' + ladoNome(u.ladoFim) + '</b>' : 'mamadeira ' + (u.ml || '') + ' ml'}</p>
-      <p class="mute">Próxima por volta das <b>${hora(u.ini + cfg.intervaloMamada * MIN)}</b>${u.tipo === 'peito' ? ' · começar pelo ' + ladoNome(u.ladoFim === 'E' ? 'D' : 'E') : ''}</p>
-      <p class="mute">${ult24(S.mam).length} mamadas nas últimas 24h</p>` : '<p class="mute">Nenhuma registrada ainda.</p>'}</div>
+    <div class="card"><div class="linha entre"><span class="rotulo">Última mamada</span>${u ? `<small data-rel="${u.ini}"></small>` : ''}</div>
+      ${u ? `<div class="linha entre" style="margin-top:6px"><span class="grande" style="font-size:2rem">${hora(u.ini)}</span><span class="tag">${u.tipo === 'peito' ? 'terminou no ' + ladoNome(u.ladoFim) : 'mamadeira ' + (u.ml || '') + ' ml'}</span></div>
+      <p class="mute">Próxima por volta das <b style="color:var(--ink)">${hora(u.ini + cfg.intervaloMamada * MIN)}</b>${u.tipo === 'peito' ? ' · começar pelo ' + ladoNome(u.ladoFim === 'E' ? 'D' : 'E') : ''} · ${ult24(S.mam).length} em 24h</p>` : '<p class="mute">Nenhuma registrada ainda.</p>'}</div>
     <div class="grade">
-      <div class="card"><h3>Fraldas hoje</h3><p>💧 ${fh.filter(f => f.xixi).length} <span class="mute">/ ${espXixi}+</span> · 💩 ${fh.filter(f => f.coco).length}</p></div>
-      <div class="card"><h3>Sono 24h</h3><p>${dur(sono24)}</p></div>
+      <div class="card"><span class="rotulo">Fraldas hoje</span><p style="font-size:1.15rem;font-weight:700">${fh.filter(f => f.xixi).length} xixi <small>/ ${espXixi}+</small><br>${fh.filter(f => f.coco).length} cocô</p></div>
+      <div class="card"><span class="rotulo">Sono 24h</span><p style="font-size:1.15rem;font-weight:700">${dur(sono24)}</p></div>
     </div>`;
-    const pv = proximaVacina(); if (pv) h += `<div class="card" data-a="ir" data-tab="maya" data-sub="vacinas"><h3>💉 Próximas vacinas</h3><p>${pv.quando} (${data(pv.dia)}): ${pv.quais}</p></div>`;
+    const pv = proximaVacina(); if (pv) h += `<button class="card linha" data-a="ir" data-tab="maya" data-sub="vacinas"><i class="bolha b-azul">${ic('syringe')}</i><span><h3>Vacinas de ${pv.quando} · ${data(pv.dia)}</h3><small>${pv.quais}</small></span></button>`;
   }
-  // próximos lembretes/remédios
-  const prox = listaNotificacoes().filter(n => n.at > Date.now() && n.at < Date.now() + 12 * H && n.id >= 100 && n.id < 700 || (n.id >= 800 && n.at < Date.now() + DIA && n.at > Date.now())).sort((a, b) => a.at - b.at).slice(0, 4);
-  if (prox.length) h += `<div class="card"><h3>Próximos lembretes</h3><ul class="lista">${prox.map(n => `<li><span>${esc(n.title)}</span><small>${dataHora(n.at)}</small></li>`).join('')}</ul></div>`;
+  const prox = listaNotificacoes().filter(n => n.at > Date.now() && ((n.id >= 100 && n.id < 700 && n.at < Date.now() + 12 * H) || (n.id >= 800 && n.at < Date.now() + DIA))).sort((a, b) => a.at - b.at).slice(0, 4);
+  if (prox.length) h += `<div class="card"><span class="rotulo">Próximos lembretes</span><ul class="lista">${prox.map(n => `<li><span>${esc(n.title)}</span><small>${dataHora(n.at)}</small></li>`).join('')}</ul></div>`;
   return h;
 }
 function proximaVacina() {
@@ -268,7 +279,7 @@ function proximaVacina() {
 /* ---------------- Telas: Maya ---------------- */
 function vMaya() {
   const sub = V.sub.maya;
-  let h = abas('maya', [['mamadas', '🍼 Mamadas'], ['fraldas', '💧 Fraldas'], ['sono', '😴 Sono'], ['ninar', '🎶 Ninar'], ['cres', '📏 Peso'], ['vacinas', '💉 Vacinas'], ['testes', '🦶 Testes'], ['marcos', '⭐ Marcos'], ['alertas', '🚨 Alertas']]);
+  let h = abas('maya', [['mamadas', 'Mamadas'], ['fraldas', 'Fraldas'], ['sono', 'Sono'], ['ninar', 'Ninar'], ['cres', 'Peso'], ['vacinas', 'Vacinas'], ['testes', 'Testes'], ['marcos', 'Marcos'], ['alertas', 'Alertas']]);
   if (!nascida() && ['mamadas', 'fraldas', 'sono', 'cres', 'vacinas', 'testes', 'marcos'].includes(sub)) h += `<div class="card"><p>Isso começa a contar quando a ${esc(cfg.bebe)} nascer. Já pode ir conhecendo! 💛</p></div>`;
   return h + ({ mamadas: vMamadas, fraldas: vFraldas, sono: vSono, ninar: vNinar, cres: vCres, vacinas: vVacinas, testes: vTestes, marcos: vMarcos, alertas: () => vAlertas(C.alertasBebe, 'Quando procurar ajuda para a ' + esc(cfg.bebe)) }[sub])();
 }
@@ -282,20 +293,20 @@ function vMamadas() {
       <div class="mute">Mamando desde ${hora(a.ini)}</div>
       <div class="grande num" data-desde="${a.ini}"></div>
       <div class="grade" style="margin:12px 0">
-        <button class="acao" data-a="mLado" data-l="E" style="${a.lado === 'E' ? 'border:2px solid var(--rosa)' : ''}"><span>⬅️</span>Esquerdo<b class="num" ${a.lado === 'E' && a.desde ? `data-desde="${a.desde}" data-base="${a.segE}"` : ''}>${crono(segE)}</b></button>
-        <button class="acao" data-a="mLado" data-l="D" style="${a.lado === 'D' ? 'border:2px solid var(--rosa)' : ''}"><span>➡️</span>Direito<b class="num" ${a.lado === 'D' && a.desde ? `data-desde="${a.desde}" data-base="${a.segD}"` : ''}>${crono(segD)}</b></button>
+        <button class="acao" data-a="mLado" data-l="E" style="${a.lado === 'E' ? 'border:2px solid var(--rosa)' : ''}"><i class="bolha b-rosa">${ic('heart')}</i>Esquerdo<b class="num" ${a.lado === 'E' && a.desde ? `data-desde="${a.desde}" data-base="${a.segE}"` : ''}>${crono(segE)}</b></button>
+        <button class="acao" data-a="mLado" data-l="D" style="${a.lado === 'D' ? 'border:2px solid var(--rosa)' : ''}"><i class="bolha b-rosa">${ic('heart')}</i>Direito<b class="num" ${a.lado === 'D' && a.desde ? `data-desde="${a.desde}" data-base="${a.segD}"` : ''}>${crono(segD)}</b></button>
       </div>
-      <div class="grade"><button class="btn sec" data-a="mPausa">${a.desde ? '⏸️ Pausar' : '▶️ Continuar'}</button><button class="btn verde" data-a="mFim">✅ Terminar</button></div>
+      <div class="grade"><button class="btn sec" data-a="mPausa">${a.desde ? ic('pause') + ' Pausar' : ic('play') + ' Continuar'}</button><button class="btn verde" data-a="mFim">${ic('check')} Terminar</button></div>
       <button class="btn sec mini" style="margin-top:10px" data-a="mCancelar">Cancelar</button></div>`;
   } else {
     const u = ultimos(S.mam)[0]; const sug = u && u.tipo === 'peito' ? (u.ladoFim === 'E' ? 'D' : 'E') : 'E';
     h += `<div class="card" style="text-align:center">
       ${u ? `<p class="mute">Última: ${hora(u.ini)} (<span data-rel="${u.ini}"></span>)${u.tipo === 'peito' ? ' · sugestão: começar pelo <b>' + ladoNome(sug) + '</b>' : ''}</p>` : ''}
       <div class="grade" style="margin:10px 0">
-        <button class="btn ${sug === 'E' ? '' : 'sec'}" style="min-height:64px" data-a="mIni" data-l="E">⬅️ Esquerdo</button>
-        <button class="btn ${sug === 'D' ? '' : 'sec'}" style="min-height:64px" data-a="mIni" data-l="D">Direito ➡️</button>
+        <button class="btn ${sug === 'E' ? '' : 'sec'}" style="min-height:64px" data-a="mIni" data-l="E">Esquerdo</button>
+        <button class="btn ${sug === 'D' ? '' : 'sec'}" style="min-height:64px" data-a="mIni" data-l="D">Direito</button>
       </div>
-      <div class="grade"><button class="btn sec" data-a="mManual" data-t="mamadeira">🍼 Mamadeira</button><button class="btn sec" data-a="mManual" data-t="peito">✍️ Anotar</button></div></div>`;
+      <div class="grade"><button class="btn sec" data-a="mManual" data-t="mamadeira">${ic('milk')} Mamadeira</button><button class="btn sec" data-a="mManual" data-t="peito">${ic('notebook-pen')} Anotar</button></div></div>`;
   }
   const l = ult24(S.mam);
   const peitoMin = l.reduce((s, m) => s + (m.segE || 0) + (m.segD || 0), 0);
@@ -312,7 +323,7 @@ function vMamadas() {
 }
 function historico(itens, linha, col) {
   if (!itens.length) return '';
-  return `<div class="card"><h3>Histórico</h3><ul class="lista">${itens.map(x => `<li>${linha(x)}<button class="btn sec mini" data-a="apagar" data-col="${col}" data-id="${x.id}">🗑️</button></li>`).join('')}</ul></div>`;
+  return `<div class="card"><h3>Histórico</h3><ul class="lista">${itens.map(x => `<li>${linha(x)}<button class="btn sec mini" data-a="apagar" data-col="${col}" data-id="${x.id}">${ic('trash-2')}</button></li>`).join('')}</ul></div>`;
 }
 
 function vFraldas() {
@@ -332,7 +343,7 @@ function vFraldas() {
 function vSono() {
   const a = S.ativo.sono;
   const l = ult24(S.sono); const tot = l.reduce((s, x) => s + x.fim - x.ini, 0) + (a ? Date.now() - a : 0);
-  let h = `<div class="card" style="text-align:center"><button class="circulo ${a ? 'on' : ''}" data-a="sono">${a ? `<span class="num" data-desde="${a}"></span><small>Toque quando acordar</small>` : `😴<small>Toque quando dormir</small>`}</button>
+  let h = `<div class="card" style="text-align:center"><button class="circulo ${a ? 'on' : ''}" data-a="sono">${a ? `<span class="num" data-desde="${a}"></span><small>Toque quando acordar</small>` : `${ic('moon')}<small>Toque quando ela dormir</small>`}</button>
     <p>Dormiu <b>${dur(tot)}</b> nas últimas 24h</p><p class="mute">Recém-nascidos dormem de 14 a 17 horas por dia, em vários cochilos. Sempre de barriga para cima, no berço, sem travesseiro nem bichinhos.</p></div>`;
   h += historico(ultimos(S.sono).slice(0, 30), s => `<span><b>${dataHora(s.ini)}</b> → ${hora(s.fim)}<br><small>${dur(s.fim - s.ini)}</small></span>`, 'sono');
   return h;
@@ -361,17 +372,18 @@ function tocar(tipo) {
 }
 function pararSom() { try { Som.node && Som.node.stop(); } catch {} Som.node = null; Som.tipo = null; clearTimeout(Som.t); Som.fimEm = 0; }
 function vNinar() {
-  const tipos = [['branco', '🌬️ Ruído branco', 'Chiado tipo TV fora do ar'], ['rosa', '🌧️ Chuva', 'Mais suave'], ['marrom', '🌊 Mar / ventilador', 'Grave e calmo'], ['utero', '💗 Barriguinha', 'Som grave com pulsação']];
-  return `<div class="card"><p class="mute">Sons contínuos acalmam muitos bebês porque lembram o barulho de dentro da barriga. Deixe o celular a uns 2 metros dela e o volume baixo.</p></div>
-  ${tipos.map(([k, n, d]) => `<button class="card linha entre" style="width:100%;text-align:left;${Som.tipo === k ? 'border:2px solid var(--rosa)' : ''}" data-a="${Som.tipo === k ? 'somParar' : 'som'}" data-t="${k}"><span><b>${n}</b><br><small>${d}</small></span><span style="font-size:1.6rem">${Som.tipo === k ? '⏹️' : '▶️'}</span></button>`).join('')}
-  <div class="card"><label>Volume</label><input type="range" min="0.05" max="1" step="0.05" value="${S.vol ?? 0.7}" data-in="vol" style="padding:0">
+  const tipos = [['branco', 'sparkles', 'azul', 'Ruído branco', 'Chiado tipo TV fora do ar'], ['rosa', 'droplets', 'verde', 'Chuva', 'Mais suave'], ['marrom', 'glass-water', 'lilas', 'Mar / ventilador', 'Grave e calmo'], ['utero', 'heart', 'rosa', 'Barriguinha', 'Som grave com pulsação']];
+  return `<div class="card"><p class="mute" style="margin:0">Sons contínuos acalmam muitos bebês porque lembram o barulho de dentro da barriga. Deixe o celular a uns 2 metros dela e o volume baixo.</p></div>
+  ${tipos.map(([k, i, c, n, d]) => `<button class="card linha entre" style="${Som.tipo === k ? 'border:2px solid var(--rosa)' : ''}" data-a="${Som.tipo === k ? 'somParar' : 'som'}" data-t="${k}"><span class="linha"><i class="bolha b-${c}">${ic(i)}</i><span><b>${n}</b><br><small>${d}</small></span></span><i class="bolha ${Som.tipo === k ? 'b-alerta' : 'b-rosa'}" style="border-radius:50%">${ic(Som.tipo === k ? 'square' : 'play')}</i></button>`).join('')}
+  <div class="card"><label style="margin-top:0">Volume</label><input type="range" min="0.05" max="1" step="0.05" value="${S.vol ?? 0.7}" data-in="vol">
   <label>Desligar sozinho</label><div class="chips">${[15, 30, 60, 0].map(m => `<button class="chip" data-a="somTimer" data-m="${m}">${m ? m + ' min' : 'Nunca'}</button>`).join('')}</div>
-  ${Som.fimEm ? `<p class="mute">Desliga às ${hora(Som.fimEm)}</p>` : ''}</div>`;
+  ${Som.fimEm ? `<p class="mute">Desliga às ${hora(Som.fimEm)}</p>` : ''}</div>
+  <button class="card linha" data-a="luz"><i class="bolha b-ouro">${ic('lamp-desk')}</i><span><h3>Luz de mamada</h3><small>Deixa a tela com uma luz laranja bem fraquinha para amamentar de madrugada sem acender a luz do quarto. Toque na tela para sair.</small></span></button>`;
 }
 
 function vCres() {
   const l = ultimos(S.cres, 't'); const pn = +cfg.pesoNasc;
-  let h = `<button class="btn bloco" data-a="cresNovo">➕ Anotar peso / altura</button>`;
+  let h = `<button class="btn bloco" data-a="cresNovo">${ic('plus')} Anotar peso / altura</button>`;
   if (pn) {
     const u = l[0];
     if (u && u.g) { const p = (u.g - pn) / pn * 100; h += `<div class="card"><h3>Desde o nascimento</h3><p><b>${(u.g / 1000).toFixed(3).replace('.', ',')} kg</b> (${p >= 0 ? '+' : ''}${p.toFixed(1).replace('.', ',')}%)</p><p class="mute">É normal perder até uns 10% do peso nos primeiros dias e recuperar até umas 2 semanas de vida.</p></div>`; }
@@ -391,27 +403,27 @@ function vTestes() {
 }
 function vMarcos() {
   const sug = ['Primeiro banho', 'Conheceu a irmã e o irmão', 'Caiu o umbigo', 'Primeira saída de casa', 'Primeiro sorriso', 'Segurou o dedo', 'Primeira noite inteira'];
-  return `<div class="card"><h3>Guardar um momento ⭐</h3><div class="chips" style="margin-bottom:8px">${sug.map(s => `<button class="chip" data-a="marcoSug" data-t="${esc(s)}">${s}</button>`).join('')}</div>
+  return `<div class="card"><h3>Guardar um momento</h3><div class="chips" style="margin-bottom:8px">${sug.map(s => `<button class="chip" data-a="marcoSug" data-t="${esc(s)}">${s}</button>`).join('')}</div>
   <input id="marcoTxt" placeholder="Escreva o momento..."><label>Quando</label><input id="marcoData" type="date" value="${paraInput(Date.now()).slice(0, 10)}">
   <button class="btn bloco" style="margin-top:10px" data-a="marcoAdd">Guardar</button></div>` +
   historico(S.marcos.slice().sort((a, b) => b.t - a.t), m => `<span><b>${data(m.t)}</b> · ${esc(m.texto)}</span>`, 'marcos');
 }
 function vAlertas(lista, titulo) {
-  return `<div class="card alerta"><h3>🚨 ${titulo}</h3><p>Na dúvida, sempre ligue. Emergência: <a href="tel:192"><b>SAMU 192</b></a></p></div>` +
+  return `<div class="card alerta"><h3>${titulo}</h3><p>Na dúvida, sempre ligue. Emergência: <a href="tel:192"><b>SAMU 192</b></a></p></div>` +
     lista.map(([t, d]) => `<details><summary>${t}</summary><p>${d}</p></details>`).join('');
 }
 
 /* ---------------- Telas: Mãe ---------------- */
 function vMae() {
   const sub = V.sub.mae;
-  return abas('mae', [['hoje', '💧 Hoje'], ['remedios', '💊 Remédios'], ['bruno', '📲 ' + esc(cfg.pai)], ['dicas', '🌷 Cuidados'], ['alertas', '🚨 Alertas']]) +
+  return abas('mae', [['hoje', 'Hoje'], ['remedios', 'Remédios'], ['bruno', 'Chamar ' + esc(cfg.pai)], ['dicas', 'Cuidados'], ['alertas', 'Alertas']]) +
     ({ hoje: vHoje, remedios: vRemedios, bruno: vBruno, dicas: vDicas, alertas: () => vAlertas(C.alertasMae, 'Sinais de alerta pra você') }[sub])();
 }
 function vHoje() {
   const ag = hojeDe(S.agua, 't').reduce((s, a) => s + a.ml, 0);
   const hm = S.humor.find(x => mesmoDia(x.t, Date.now()));
   const caras = ['😢', '😕', '😐', '🙂', '😄'];
-  let h = `<div class="card"><div class="linha entre"><h3>💧 Água hoje</h3><b>${(ag / 1000).toFixed(1).replace('.', ',')} / ${(cfg.metaAgua / 1000).toFixed(1).replace('.', ',')} L</b></div>
+  let h = `<div class="card"><div class="linha entre"><h3>Água hoje</h3><b>${(ag / 1000).toFixed(1).replace('.', ',')} / ${(cfg.metaAgua / 1000).toFixed(1).replace('.', ',')} L</b></div>
     <div class="barra" style="margin:8px 0 12px"><i style="width:${Math.min(100, ag / cfg.metaAgua * 100)}%;background:var(--azul)"></i></div>
     <div class="grade3">${[200, 300, 500].map(m => `<button class="btn azul" data-a="agua" data-ml="${m}">+${m} ml</button>`).join('')}</div>
     <label class="check" style="border:0"><input type="checkbox" data-cfg="lembreteAgua" ${cfg.lembreteAgua ? 'checked' : ''}><span class="t">Lembrar de beber água a cada 2 horas (9h às 21h)</span></label></div>
@@ -424,17 +436,17 @@ function vHoje() {
 }
 function vRemedios() {
   const l = S.rem;
-  let h = `<button class="btn bloco" data-a="remNovo">➕ Adicionar remédio/vitamina</button>`;
+  let h = `<button class="btn bloco" data-a="remNovo">${ic('plus')} Adicionar remédio/vitamina</button>`;
   if (!l.length) h += `<div class="card vazio">Cadastre os remédios da ${esc(cfg.mae)} e da ${esc(cfg.bebe)} (só os que a médica/pediatra passou). O app avisa a hora de cada dose.</div>`;
   l.forEach(r => {
     const u = ultimos(S.doses.filter(d => d.remId === r.id), 't')[0];
     let prox = '';
     if (r.modo === 'horarios') { const hs = (r.horarios || []).map(x => emHorario(0, x)).concat((r.horarios || []).map(x => emHorario(1, x))).filter(t => t > Date.now()).sort(); prox = hs[0] ? 'Próxima: ' + dataHora(hs[0]) : ''; }
     else if (u) prox = 'Próxima: ' + dataHora(u.t + (+r.h || 8) * H);
-    h += `<div class="card" style="${r.ativo === false ? 'opacity:.55' : ''}"><div class="linha entre"><span><b>💊 ${esc(r.nome)}</b> <span class="tag">${r.quem === 'bebe' ? esc(cfg.bebe) : esc(cfg.mae)}</span><br><small>${esc(r.dose || '')} · ${r.modo === 'horarios' ? (r.horarios || []).join(', ') : 'a cada ' + (r.h || 8) + 'h'}</small></span>
-      <button class="btn sec mini" data-a="remEditar" data-id="${r.id}">✏️</button></div>
+    h += `<div class="card" style="${r.ativo === false ? 'opacity:.55' : ''}"><div class="linha entre"><span><b>${esc(r.nome)}</b> <span class="tag">${r.quem === 'bebe' ? esc(cfg.bebe) : esc(cfg.mae)}</span><br><small>${esc(r.dose || '')} · ${r.modo === 'horarios' ? (r.horarios || []).join(', ') : 'a cada ' + (r.h || 8) + 'h'}</small></span>
+      <button class="btn sec mini" data-a="remEditar" data-id="${r.id}">${ic('pencil')}</button></div>
       <p class="mute">${u ? 'Última dose: ' + dataHora(u.t) : 'Nenhuma dose marcada'}${prox ? ' · ' + prox : ''}</p>
-      <button class="btn verde bloco" data-a="dose" data-id="${r.id}">✅ Tomou agora</button></div>`;
+      <button class="btn verde bloco" data-a="dose" data-id="${r.id}">${ic('check')} Tomou agora</button></div>`;
   });
   return h;
 }
@@ -444,7 +456,7 @@ function vBruno() {
   return `<div class="card"><p class="mute">Toque e a mensagem abre pronta no WhatsApp do ${esc(cfg.pai)}.</p></div>
   ${C.pedidosBruno.map(m => `<button class="card" style="width:100%;text-align:left;font-weight:600" data-a="wa" data-m="${esc(m)}">${esc(m)}</button>`).join('')}
   <div class="card"><input id="waTxt" placeholder="Outra mensagem..."><button class="btn bloco" style="margin-top:8px" data-a="waLivre">Enviar</button></div>
-  <a class="btn sec bloco" href="tel:+${tel}">📞 Ligar para o ${esc(cfg.pai)}</a>`;
+  <a class="btn sec bloco" href="tel:+${tel}">${ic('phone')} Ligar para o ${esc(cfg.pai)}</a>`;
 }
 function vDicas() {
   let extra = '';
@@ -457,7 +469,7 @@ function vDicas() {
 /* ---------------- Telas: Parto ---------------- */
 function vParto() {
   const sub = V.sub.parto;
-  return abas('parto', [['contr', '⏱️ Contrações'], ['chutes', '👣 Movimentos'], ['mala', '🧳 Mala'], ['plano', '📝 Plano de parto'], ['quando', '🚨 Quando ir'], ['contatos', '📞 Contatos']]) +
+  return abas('parto', [['contr', 'Contrações'], ['chutes', 'Movimentos'], ['mala', 'Mala'], ['plano', 'Plano de parto'], ['quando', 'Quando ir'], ['contatos', 'Contatos']]) +
     ({ contr: vContr, chutes: vChutes, mala: vMala, plano: vPlano, quando: () => vAlertas(C.alertasGestacao, 'Quando ir para a maternidade'), contatos: vContatos }[sub])();
 }
 function statsContr() {
@@ -474,7 +486,7 @@ function vContr() {
   const a = S.ativo.contr; const st = statsContr(); const r = cfg.regra;
   let h = `<div class="card" style="text-align:center"><button class="circulo ${a ? 'on' : ''}" data-a="contr">${a ? `<span class="num" style="font-size:2rem" data-desde="${a}"></span><small>Toque quando PASSAR</small>` : `Começou<small>Toque quando a contração começar</small>`}</button>
   ${st.n >= 2 ? `<div class="grade3"><div><b>${st.n}</b><br><small>na última hora</small></div><div><b>${dur(st.int)}</b><br><small>de intervalo</small></div><div><b>${Math.round(st.du / 1000)} s</b><br><small>de duração</small></div></div>` : '<p class="mute">Marque o começo e o fim de cada contração.</p>'}</div>`;
-  if (st.ok) h += `<div class="card alerta"><h3>🚨 Contrações regulares!</h3><p>A cada ${r.freq} min ou menos, durando ${r.dur}s ou mais, por cerca de ${r.janela} min. Hora de ligar para a maternidade/médica e se preparar para sair.</p><div class="grade"><button class="btn perigo" data-a="wa" data-m="Acho que entrei em trabalho de parto! 🚨 As contrações estão a cada ${Math.round(st.int / MIN)} min.">Avisar ${esc(cfg.pai)}</button><button class="btn sec" data-a="ir" data-tab="parto" data-sub="contatos">Contatos</button></div></div>`;
+  if (st.ok) h += `<div class="card alerta"><h3>Contrações regulares!</h3><p>A cada ${r.freq} min ou menos, durando ${r.dur}s ou mais, por cerca de ${r.janela} min. Hora de ligar para a maternidade/médica e se preparar para sair.</p><div class="grade"><button class="btn perigo" data-a="wa" data-m="Acho que entrei em trabalho de parto! 🚨 As contrações estão a cada ${Math.round(st.int / MIN)} min.">Avisar ${esc(cfg.pai)}</button><button class="btn sec" data-a="ir" data-tab="parto" data-sub="contatos">Contatos</button></div></div>`;
   h += `<div class="card"><p class="mute">Regra usada: a cada <b>${r.freq} min</b>, durando <b>${r.dur}s</b>, por <b>${r.janela} min</b> (dá pra mudar nos ajustes). Como é o seu 3º parto, ele pode andar mais rápido: siga o que a médica combinou com você.</p></div>`;
   const ord = S.contr.slice().sort((x, y) => y.ini - x.ini).slice(0, 25);
   if (ord.length) h += `<div class="card"><div class="linha entre"><h3>Registro</h3><button class="btn sec mini" data-a="contrLimpar">Limpar</button></div><ul class="lista">${ord.map((c, i) => { const ant = ord[i + 1]; return `<li><span><b>${hora(c.ini)}</b> · ${Math.round((c.fim - c.ini) / 1000)} s</span><small>${ant ? 'intervalo ' + crono(c.ini - ant.ini) : ''}</small></li>`; }).join('')}</ul></div>`;
@@ -488,7 +500,7 @@ function vChutes() {
     h += `<div class="card" style="text-align:center"><button class="circulo" data-a="chute"><span style="font-size:3rem">${a.n}</span><small>de 10 · toque a cada mexida</small></button>
     <p class="mute">Contando há <span data-desde="${a.ini}"></span></p>${passou ? `<div class="card alerta"><b>Já passaram 2 horas e foram menos de 10 movimentos.</b><p>Ligue para a médica ou vá para a maternidade.</p></div>` : ''}
     <div class="grade"><button class="btn sec" data-a="chuteDesfaz">−1</button><button class="btn sec" data-a="chuteFim">Encerrar</button></div></div>`;
-  } else h += `<button class="btn bloco" style="min-height:60px" data-a="chuteIni">👣 Começar a contar</button>`;
+  } else h += `<button class="btn bloco" style="min-height:60px" data-a="chuteIni">${ic('footprints')} Começar a contar</button>`;
   h += historico(ultimos(S.chutes).slice(0, 15), c => `<span><b>${dataHora(c.ini)}</b> · ${c.n} movimentos em ${dur(c.fim - c.ini)}</span>`, 'chutes');
   return h;
 }
@@ -510,18 +522,18 @@ function vPlano() {
   <label>Acompanhante</label><input data-plano="acomp" value="${esc(p.acomp ?? cfg.pai)}"></div>
   <div class="card"><h3>Preferências</h3>${PREF.map(t => `<label class="check"><input type="checkbox" data-pref="${esc(t)}" ${pf.includes(t) ? 'checked' : ''}><span class="t">${esc(t)}</span></label>`).join('')}
   <label>Observações</label><textarea data-plano="obs">${esc(p.obs)}</textarea></div>
-  <button class="btn bloco" data-a="planoCompartilhar">📤 Compartilhar / imprimir</button>`;
+  <button class="btn bloco" data-a="planoCompartilhar">${ic('share-2')} Compartilhar / imprimir</button>`;
 }
 function vContatos() {
   const lista = [{ nome: cfg.pai, tel: cfg.telPai }].concat(cfg.contatos);
-  return `<div class="card"><ul class="lista">${lista.map((c, i) => `<li><span><b>${esc(c.nome)}</b><br><small>${esc(c.tel) || 'sem número'}</small></span><span class="linha">${c.tel ? `<a class="btn mini" href="tel:${soDigitos(c.tel)}">📞</a>${soDigitos(c.tel).length > 8 ? `<a class="btn mini verde" href="https://wa.me/${telWa(c.tel)}">💬</a>` : ''}` : ''}${i ? `<button class="btn sec mini" data-a="contatoEd" data-i="${i - 1}">✏️</button>` : ''}</span></li>`).join('')}</ul></div>
-  <button class="btn sec bloco" data-a="contatoEd" data-i="-1">➕ Novo contato</button>`;
+  return `<div class="card"><ul class="lista">${lista.map((c, i) => `<li><span><b>${esc(c.nome)}</b><br><small>${esc(c.tel) || 'sem número'}</small></span><span class="linha">${c.tel ? `<a class="btn mini" href="tel:${soDigitos(c.tel)}">${ic('phone')}</a>${soDigitos(c.tel).length > 8 ? `<a class="btn mini verde" href="https://wa.me/${telWa(c.tel)}">${ic('message-circle-heart')}</a>` : ''}` : ''}${i ? `<button class="btn sec mini" data-a="contatoEd" data-i="${i - 1}">${ic('pencil')}</button>` : ''}</span></li>`).join('')}</ul></div>
+  <button class="btn sec bloco" data-a="contatoEd" data-i="-1">${ic('plus')} Novo contato</button>`;
 }
 
 /* ---------------- Telas: Mais ---------------- */
 function vMais() {
   const sub = V.sub.mais;
-  return abas('mais', [['docs', '📄 Documentos'], ['lembretes', '⏰ Lembretes'], ['resumo', '🩺 Resumo'], ['ajustes', '⚙️ Ajustes']]) +
+  return abas('mais', [['docs', 'Documentos'], ['lembretes', 'Lembretes'], ['resumo', 'Resumo'], ['ajustes', 'Ajustes']]) +
     ({ docs: vDocs, lembretes: vLembretes, resumo: vResumo, ajustes: vAjustes }[sub])();
 }
 function vDocs() {
@@ -546,7 +558,7 @@ ${cfg.pesoNasc ? 'Peso ao nascer: ' + cfg.pesoNasc + ' g\n' : ''}${u && u.g ? '�
 }
 function vResumo() {
   return `<div class="card"><p class="mute">Bom para mostrar na consulta ou mandar para a pediatra.</p><pre style="white-space:pre-wrap;font-family:inherit;margin:0">${esc(textoResumo())}</pre></div>
-  <button class="btn bloco" data-a="compartilhar" data-q="resumo">📤 Compartilhar</button>`;
+  <button class="btn bloco" data-a="compartilhar" data-q="resumo">${ic('share-2')} Compartilhar</button>`;
 }
 function vAjustes() {
   return `<div class="card"><h3>Nomes e datas</h3>
@@ -555,7 +567,7 @@ function vAjustes() {
   <label>Nome do papai</label><input data-cfg="pai" value="${esc(cfg.pai)}">
   <label>WhatsApp do ${esc(cfg.pai)} (com DDD)</label><input type="tel" data-cfg="telPai" value="${esc(cfg.telPai)}" placeholder="15 99999-9999">
   ${nascida() ? `<label>Nascimento</label><input type="datetime-local" data-cfg="nasc" value="${esc(cfg.nasc)}"><div class="grade"><div><label>Peso ao nascer (g)</label><input type="number" data-cfg="pesoNasc" value="${esc(cfg.pesoNasc)}"></div><div><label>Comprimento (cm)</label><input type="number" data-cfg="compNasc" value="${esc(cfg.compNasc)}"></div></div>` : ''}</div>
-  <div class="card"><h3>🔔 Notificações</h3><p class="mute" id="notifStatus">Verificando...</p>
+  <div class="card"><h3>Notificações</h3><p class="mute" id="notifStatus">Verificando...</p>
   <div class="grade"><button class="btn sec" data-a="notifPedir">Permitir</button><button class="btn sec" data-a="notifTeste">Testar</button></div>
   <label class="check"><input type="checkbox" data-cfg="lembreteMamada" ${cfg.lembreteMamada ? 'checked' : ''}><span class="t">Avisar a hora da próxima mamada</span></label>
   <label>Intervalo entre mamadas (minutos, contando do início)</label><input type="number" data-cfg="intervaloMamada" value="${cfg.intervaloMamada}">
@@ -563,9 +575,12 @@ function vAjustes() {
   <label>Meta de água (ml)</label><input type="number" data-cfg="metaAgua" value="${cfg.metaAgua}"></div>
   <div class="card"><h3>Recados do ${esc(cfg.pai)}</h3><p class="mute">Um por linha. Aparece um por dia no início.</p><textarea data-cfg="recados" style="min-height:160px">${esc(cfg.recados.join('\n'))}</textarea></div>
   <div class="card"><h3>Alerta de contrações</h3><div class="grade3"><div><label>A cada (min)</label><input type="number" data-regra="freq" value="${cfg.regra.freq}"></div><div><label>Duração (s)</label><input type="number" data-regra="dur" value="${cfg.regra.dur}"></div><div><label>Por (min)</label><input type="number" data-regra="janela" value="${cfg.regra.janela}"></div></div></div>
+  <div class="card"><h3>Foto de fundo</h3><p class="mute">Escolha qualquer foto da galeria para ficar no fundo do app.</p>
+  <label class="foto-prev" style="${fotoFundo() ? `background-image:url(${fotoFundo()});border-style:solid` : ''}">${fotoFundo() ? '' : ic('image') + ' Escolher foto'}<input type="file" accept="image/*" data-foto="1" hidden></label>
+  ${fotoFundo() ? `<label>Clareza da foto (mais à direita = foto mais apagada, texto mais fácil de ler)</label><input type="range" min="0.15" max="0.9" step="0.05" value="${cfg.veu ?? 0.55}" data-in="veu"><button class="btn sec bloco" style="margin-top:10px" data-a="fotoTirar">Remover foto</button>` : ''}</div>
   <div class="card"><h3>Aparência</h3><div class="chips">${[['auto', 'Automático'], ['claro', 'Claro'], ['noite', 'Noturno']].map(([k, n]) => `<button class="chip ${cfg.tema === k ? 'on' : ''}" data-a="tema" data-t="${k}">${n}</button>`).join('')}</div><p class="mute">No automático, fica escuro das 19h às 6h para não ofuscar nas mamadas da madrugada.</p></div>
   <div class="card"><h3>Backup</h3><p class="mute">Os dados ficam só neste celular. Faça um backup de vez em quando (manda pro WhatsApp do ${esc(cfg.pai)}, por exemplo).</p>
-  <div class="grade"><button class="btn sec" data-a="compartilhar" data-q="backup">📤 Exportar</button><button class="btn sec" data-a="importar">📥 Importar</button></div>
+  <div class="grade"><button class="btn sec" data-a="compartilhar" data-q="backup">${ic('share-2')} Exportar</button><button class="btn sec" data-a="importar">${ic('plus')} Importar</button></div>
   ${nascida() ? '<button class="btn sec bloco" style="margin-top:10px" data-a="desfazNasc">Voltar para o modo gestação</button>' : ''}
   <button class="btn perigo bloco" style="margin-top:10px" data-a="zerar">Apagar todos os dados</button></div>
   <p class="mute" style="text-align:center">Feito com amor pelo ${esc(cfg.pai)} 💛</p>`;
@@ -585,7 +600,7 @@ const A = {
   mCancelar: () => { if (confirm('Cancelar esta mamada sem salvar?')) { delete S.ativo.mamada; salvar(); render(); } },
   mManual: el => {
     const mam = el.dataset.t === 'mamadeira';
-    modal(`<h2>${mam ? '🍼 Mamadeira' : '✍️ Anotar mamada'}</h2><label>Começou</label><input id="fIni" type="datetime-local" value="${paraInput(Date.now() - 20 * MIN)}">
+    modal(`<h2>${mam ? 'Mamadeira' : 'Anotar mamada'}</h2><label>Começou</label><input id="fIni" type="datetime-local" value="${paraInput(Date.now() - 20 * MIN)}">
     ${mam ? `<label>Quantidade (ml)</label><input id="fMl" type="number" inputmode="numeric" placeholder="60">` : `<div class="grade"><div><label>Esquerdo (min)</label><input id="fE" type="number" inputmode="numeric" value="10"></div><div><label>Direito (min)</label><input id="fD" type="number" inputmode="numeric" value="10"></div></div><label>Terminou no lado</label><select id="fLado"><option value="D">Direito</option><option value="E">Esquerdo</option></select>`}
     <button class="btn bloco" style="margin-top:14px" data-a="mManualSalvar" data-t="${el.dataset.t}">Salvar</button>`);
   },
@@ -640,9 +655,11 @@ const A = {
   // Mais
   lembAdd: () => { const t = $('#lembTit').value.trim(); if (!t) return toast('Escreva o lembrete'); S.lemb.push({ id: uid(), titulo: t, quando: deInput($('#lembQ').value), obs: $('#lembObs').value.trim() }); salvar(); render(); toast('Lembrete salvo ⏰'); },
   compartilhar: el => compartilhar(el.dataset.q === 'backup' ? JSON.stringify(S) : textoResumo(), el.dataset.q === 'backup'),
-  importar: () => modal(`<h2>📥 Importar backup</h2><p class="mute">Cole aqui o texto do backup. Isso substitui os dados atuais.</p><textarea id="impTxt" style="min-height:200px"></textarea><button class="btn bloco" style="margin-top:12px" data-a="importarOk">Importar</button>`),
+  importar: () => modal(`<h2>${ic('plus')} Importar backup</h2><p class="mute">Cole aqui o texto do backup. Isso substitui os dados atuais.</p><textarea id="impTxt" style="min-height:200px"></textarea><button class="btn bloco" style="margin-top:12px" data-a="importarOk">Importar</button>`),
   importarOk: () => { try { const d = JSON.parse($('#impTxt').value); if (!d.cfg) throw 0; localStorage.setItem(LS, JSON.stringify(d)); location.reload(); } catch { toast('Backup inválido'); } },
   zerar: () => { if (confirm('Apagar TUDO? Isso não tem volta.') && confirm('Tem certeza mesmo?')) { localStorage.removeItem(LS); location.reload(); } },
+  luz: () => { $('#luz').hidden = false; },
+  fotoTirar: () => { localStorage.removeItem('maira:fundo'); render(); },
   tema: el => { cfg.tema = el.dataset.t; salvar(); render(); },
   notifPedir: async () => { const ok = await N.pedir(); toast(ok ? 'Notificações ativadas 🔔' : 'Permissão negada: libere nas configurações do Android'); render(); },
   notifTeste: async () => { await N.pedir(); await N.agora('Oi, ' + cfg.mae + '! 💛', 'As notificações estão funcionando.', 'inicio'); toast('Enviada!'); },
@@ -660,6 +677,18 @@ const A = {
   // Boas-vindas
   inicioOk: async () => { cfg.dpp = $('#bvDpp').value; cfg.telPai = $('#bvTel').value; cfg.iniciado = true; salvar(); fecharModal(); render(); await N.pedir(); agendarDepois(); },
 };
+function carregarFoto(f) {
+  const url = URL.createObjectURL(f); const im = new Image();
+  im.onload = () => {
+    const max = 1280, k = Math.min(1, max / Math.max(im.width, im.height));
+    const c = document.createElement('canvas'); c.width = Math.round(im.width * k); c.height = Math.round(im.height * k);
+    c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); URL.revokeObjectURL(url);
+    try { localStorage.setItem('maira:fundo', c.toDataURL('image/jpeg', 0.82)); toast('Foto de fundo aplicada ✨'); } catch { toast('Foto muito grande, tente outra'); }
+    render();
+  };
+  im.onerror = () => toast('Não consegui abrir essa foto');
+  im.src = url;
+}
 function acumula(a) { if (a.desde) { a['seg' + a.lado] += Date.now() - a.desde; a.desde = Date.now(); } }
 function abrirWa(msg) { const t = telWa(cfg.telPai); if (!t) return ir('mais', 'ajustes'); location.href = `https://wa.me/${t}?text=${encodeURIComponent(msg)}`; }
 async function compartilhar(texto, arquivo) {
@@ -702,10 +731,12 @@ document.addEventListener('change', e => {
   }
   else if (el.dataset.regra) { cfg.regra[el.dataset.regra] = +el.value || cfg.regra[el.dataset.regra]; salvar(); }
   else if (el.dataset.ch) A[el.dataset.ch](el);
+  else if (el.dataset.foto && el.files[0]) carregarFoto(el.files[0]);
 });
 document.addEventListener('input', e => {
   const el = e.target;
   if (el.dataset.plano) { S.plano[el.dataset.plano] = el.value; localStorage.setItem(LS, JSON.stringify(S)); }
+  if (el.dataset.in === 'veu') { cfg.veu = +el.value; document.documentElement.style.setProperty('--veu', cfg.veu); localStorage.setItem(LS, JSON.stringify(S)); }
   if (el.dataset.in === 'vol') { S.vol = +el.value; if (Som.gain) Som.gain.gain.value = S.vol; localStorage.setItem(LS, JSON.stringify(S)); }
 });
 
@@ -720,7 +751,9 @@ setInterval(() => { if ($('#modal').hidden && !document.activeElement.matches('i
 document.addEventListener('visibilitychange', () => { if (!document.hidden) { render(); agendarDepois(); } });
 
 /* Luz noturna */
-$('#btnNoite').addEventListener('click', () => { $('#luz').hidden = false; });
+$('#btnTema').addEventListener('click', () => { cfg.tema = document.documentElement.classList.contains('noite') ? 'claro' : 'noite'; salvar(); render(); toast(cfg.tema === 'noite' ? 'Tema escuro' : 'Tema claro'); });
+$$('#nav button').forEach(b => b.insertAdjacentHTML('afterbegin', `<i>${ic(b.dataset.ic)}</i>`));
+(() => { const im = new Image(); im.onload = () => { ILUS = im.src; render(); }; im.src = 'img/capa.png'; })();
 $('#luz').addEventListener('click', () => { $('#luz').hidden = true; });
 
 /* Botão voltar do Android */

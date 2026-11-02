@@ -3,32 +3,33 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
-<meta name="theme-color" content="#f6ede6">
+<meta name="theme-color" content="#f7efe9">
 <title>Maíra & Maya</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon-192.png">
-<link rel="apple-touch-icon" href="icons/icon-192.png">
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+<div id="fundo" hidden></div>
 <header id="topo">
   <div>
     <div id="saudacao">Olá</div>
     <div id="subtitulo"></div>
   </div>
-  <button id="btnNoite" class="icone" aria-label="Luz noturna">🌙</button>
+  <button id="btnTema" class="icone" aria-label="Trocar tema claro/escuro"></button>
 </header>
 <main id="view"></main>
 <nav id="nav">
-  <button data-tab="inicio" class="ativo"><span>🏠</span>Início</button>
-  <button data-tab="maya"><span>👶</span>Maya</button>
-  <button data-tab="mae"><span>🌷</span>Mãe</button>
-  <button data-tab="parto"><span>🤰</span>Parto</button>
-  <button data-tab="mais"><span>☰</span>Mais</button>
+  <button data-tab="inicio" data-ic="house">Início</button>
+  <button data-tab="maya" data-ic="baby">Maya</button>
+  <button data-tab="mae" data-ic="flower-2">Mãe</button>
+  <button data-tab="parto" data-ic="hospital">Parto</button>
+  <button data-tab="mais" data-ic="layout-grid">Mais</button>
 </nav>
 <div id="modal" hidden><div id="modalBox"></div></div>
 <div id="toast" hidden></div>
-<div id="luz" hidden><div>Toque para sair</div></div>
+<div id="luz" hidden><div>Luz de mamada</div><small>Toque em qualquer lugar para sair</small></div>
+<script src="icones.js"></script>
 <script src="data.js"></script>
 <script src="app.js"></script>
 </body>
