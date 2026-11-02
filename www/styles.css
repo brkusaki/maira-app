@@ -144,7 +144,7 @@ details summary{font-weight:700;cursor:pointer}
 #modal.centro #modalBox input{background:rgba(255,255,255,.95);color:#4a2631;border:0}
 #modal.centro #modalBox .btn{background:#fff;color:#c95b80}
 #modal.centro #modalBox .mute{color:rgba(255,255,255,.85)}
-.bv-ilus{width:70%;max-width:240px;margin:-6px auto 4px;display:block;filter:drop-shadow(0 8px 16px rgba(80,20,40,.3))}
+.bv-ilus{width:52%;max-width:200px;aspect-ratio:1;object-fit:cover;border-radius:50%;border:5px solid rgba(255,255,255,.85);margin:0 auto 10px;display:block;box-shadow:0 10px 24px rgba(80,20,40,.3);animation:respira 5s ease-in-out infinite}
 
 /* Momentos */
 .filme-btn{display:flex;align-items:center;gap:14px;width:100%;padding:18px;border-radius:24px;background:var(--grad);color:#fff;text-align:left;box-shadow:0 10px 26px rgba(224,112,138,.35);margin:10px 0}
@@ -183,9 +183,21 @@ details summary{font-weight:700;cursor:pointer}
 #filme .barras i b{display:block;height:100%;width:0;background:#fff}
 #filme .fechar{position:absolute;top:calc(2px + env(safe-area-inset-top));right:8px;width:46px;height:46px;z-index:4;display:grid;place-items:center;color:#fff;font-size:1.6rem}
 #filme .cena.abertura{background:var(--grad);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:30px}
-#filme .cena.abertura img{width:72%;max-width:320px;height:auto;object-fit:contain;animation:flutua 4s ease-in-out infinite;filter:drop-shadow(0 10px 20px rgba(60,10,30,.35))}
+#filme .cena.abertura img{width:60%;max-width:260px;height:auto;aspect-ratio:1;object-fit:cover;border-radius:50%;border:6px solid rgba(255,255,255,.85);animation:flutua 4s ease-in-out infinite;box-shadow:0 14px 30px rgba(60,10,30,.35)}
 #filme .abertura h1{font-size:2rem;margin:10px 0 4px}
 @keyframes flutua{50%{transform:translateY(-10px)}}
 
 /* Sprite animado da capa */
 .capa .sprite{position:absolute;right:-6px;bottom:-4px;width:52%;background-repeat:no-repeat;background-position:0 0;filter:drop-shadow(0 6px 14px rgba(80,30,30,.25))}
+
+/* Capa com a ilustração da Maya */
+.capa.capa-foto{min-height:196px;background:#f4d9df}
+.capa-foto .respira{position:absolute;inset:-4%;background:url(img/fundo.jpg) no-repeat;background-size:74% auto;background-position:132% 48%;transform-origin:80% 60%;animation:respira 5s ease-in-out infinite}
+.capa-foto::before{content:"";position:absolute;inset:0;z-index:1;background:linear-gradient(90deg,rgba(201,84,124,.97) 0%,rgba(224,112,138,.88) 38%,rgba(232,140,160,.25) 62%,transparent 78%)}
+html.noite .capa-foto::before{background:linear-gradient(90deg,rgba(74,30,56,.98) 0%,rgba(92,38,68,.9) 40%,rgba(60,20,45,.35) 66%,rgba(30,10,25,.15) 100%)}
+.capa-foto .txt{position:relative;z-index:2;max-width:58%}
+.capa-foto .brilhos{position:absolute;inset:0;z-index:2;pointer-events:none}
+.capa-foto .brilhos i{position:absolute;width:6px;height:6px;border-radius:50%;background:#fff;box-shadow:0 0 8px 3px rgba(255,240,200,.9);opacity:0;animation:pisca 3.2s ease-in-out infinite}
+@keyframes respira{0%,100%{transform:scale(1)}50%{transform:scale(1.03)}}
+@keyframes pisca{0%,100%{opacity:0;transform:scale(.4)}50%{opacity:.95;transform:scale(1)}}
+html.noite #fundo::after{opacity:calc(var(--veu,.55) + .22)}

@@ -220,7 +220,8 @@ function tema() {
   R.classList.toggle('foto', !!f); $('#fundo').hidden = !f;
   if (f) { $('#fundo').style.backgroundImage = `url(${f})`; R.style.setProperty('--veu', cfg.veu ?? 0.55); }
 }
-function fotoFundo() { try { return localStorage.getItem('maira:fundo') || ''; } catch { return ''; } }
+function fotoFundo() { try { return localStorage.getItem('maira:fundo') || (cfg.semFundo ? '' : 'img/fundo.jpg'); } catch { return ''; } }
+const fotoPropria = () => { try { return !!localStorage.getItem('maira:fundo'); } catch { return false; } };
 
 function render() {
   tema();
@@ -245,10 +246,9 @@ let spriteI = 0, spriteDir = 1;
   if (SPRITE.vaiVolta) { if (spriteI + spriteDir >= n || spriteI + spriteDir < 0) spriteDir *= -1; spriteI += spriteDir; } else spriteI = (spriteI + 1) % n;
   el.style.backgroundPosition = (n > 1 ? spriteI / (n - 1) * 100 : 0) + '% 0';
 })();
+const BRILHOS = [[62, 18, 0], [88, 12, 1.1], [94, 46, 2.2], [70, 70, .6], [84, 84, 1.7], [56, 40, 2.6]];
 function capa(rot, grande, sub, extra = '') {
-  if (SPRITE) return `<div class="capa com-ilus"><div class="sprite" style="aspect-ratio:${SPRITE.w}/${SPRITE.h};background-image:url(${SPRITE.src});background-size:${SPRITE.quadros * 100}% 100%"></div>
-  <div class="txt"><div class="rotulo">${rot}</div><div class="grande">${grande}</div><div class="sub">${sub}</div>${extra}</div></div>`;
-  return `<div class="capa ${ILUS ? 'com-ilus' : ''}"><div class="deco">${ic(nascida() ? 'heart' : 'moon')}</div>${ILUS ? `<img class="ilus" src="${ILUS}" alt="">` : ''}
+  return `<div class="capa capa-foto"><div class="respira"></div><div class="brilhos">${BRILHOS.map(([x, y, d]) => `<i style="left:${x}%;top:${y}%;animation-delay:${d}s"></i>`).join('')}</div>
   <div class="txt"><div class="rotulo">${rot}</div><div class="grande">${grande}</div><div class="sub">${sub}</div>${extra}</div></div>`;
 }
 function vInicio() {
@@ -748,9 +748,9 @@ function vAjustes() {
   <label>Meta de água (ml)</label><input type="number" data-cfg="metaAgua" value="${cfg.metaAgua}"></div>
   <div class="card"><h3>Recados do ${esc(cfg.pai)}</h3><p class="mute">Um por linha. Aparece um por dia no início.</p><textarea data-cfg="recados" style="min-height:160px">${esc(cfg.recados.join('\n'))}</textarea></div>
   <div class="card"><h3>Alerta de contrações</h3><div class="grade3"><div><label>A cada (min)</label><input type="number" data-regra="freq" value="${cfg.regra.freq}"></div><div><label>Duração (s)</label><input type="number" data-regra="dur" value="${cfg.regra.dur}"></div><div><label>Por (min)</label><input type="number" data-regra="janela" value="${cfg.regra.janela}"></div></div></div>
-  <div class="card"><h3>Foto de fundo</h3><p class="mute">Escolha qualquer foto da galeria para ficar no fundo do app.</p>
+  <div class="card"><h3>Foto de fundo</h3><p class="mute">Toque na imagem para escolher qualquer foto da galeria.</p>
   <label class="foto-prev" style="${fotoFundo() ? `background-image:url(${fotoFundo()});border-style:solid` : ''}">${fotoFundo() ? '' : ic('image') + ' Escolher foto'}<input type="file" accept="image/*" data-foto="1" hidden></label>
-  ${fotoFundo() ? `<label>Clareza da foto (mais à direita = foto mais apagada, texto mais fácil de ler)</label><input type="range" min="0.15" max="0.9" step="0.05" value="${cfg.veu ?? 0.55}" data-in="veu"><button class="btn sec bloco" style="margin-top:10px" data-a="fotoTirar">Remover foto</button>` : ''}</div>
+  ${fotoFundo() ? `<label>Clareza da foto (mais à direita = foto mais apagada, texto mais fácil de ler)</label><input type="range" min="0.15" max="0.9" step="0.05" value="${cfg.veu ?? 0.55}" data-in="veu"><button class="btn sec bloco" style="margin-top:10px" data-a="fotoTirar">Ficar sem foto de fundo</button>` : ''}${fotoPropria() || cfg.semFundo ? `<button class="btn sec bloco" style="margin-top:8px" data-a="fotoMaya">Usar a ilustração da ${esc(cfg.bebe)}</button>` : ''}</div>
   <div class="card"><h3>Aparência</h3><div class="chips">${[['auto', 'Automático'], ['claro', 'Claro'], ['noite', 'Noturno']].map(([k, n]) => `<button class="chip ${cfg.tema === k ? 'on' : ''}" data-a="tema" data-t="${k}">${n}</button>`).join('')}</div><p class="mute">No automático, fica escuro das 19h às 6h para não ofuscar nas mamadas da madrugada.</p></div>
   <div class="card"><h3>Backup</h3><p class="mute">Os dados ficam só neste celular. Faça um backup de vez em quando (manda pro WhatsApp do ${esc(cfg.pai)}, por exemplo).</p>
   <div class="grade"><button class="btn sec" data-a="compartilhar" data-q="backup">${ic('share-2')} Exportar</button><button class="btn sec" data-a="importar">${ic('plus')} Importar</button></div>
@@ -838,7 +838,8 @@ const A = {
   buscarAtualiz: () => procurarAtualizacao(true),
   aplicarAtualiz: () => { if (PRONTA && UPD) { toast('Atualizando...'); localStorage.setItem(LS, JSON.stringify(S)); UPD.set({ id: PRONTA.id }); } },
   luz: () => { $('#luz').hidden = false; },
-  fotoTirar: () => { localStorage.removeItem('maira:fundo'); render(); },
+  fotoTirar: () => { if (fotoPropria()) localStorage.removeItem('maira:fundo'); else cfg.semFundo = true; salvar(); render(); },
+  fotoMaya: () => { localStorage.removeItem('maira:fundo'); cfg.semFundo = false; salvar(); render(); },
   tema: el => { cfg.tema = el.dataset.t; salvar(); render(); },
   notifPedir: async () => { const ok = await N.pedir(); toast(ok ? 'Notificações ativadas 🔔' : 'Permissão negada: libere nas configurações do Android'); render(); },
   notifTeste: async () => { await N.pedir(); await N.agora('Oi, ' + cfg.mae + '! 💛', 'As notificações estão funcionando.', 'inicio'); toast('Enviada!'); },
@@ -862,7 +863,7 @@ function carregarFoto(f) {
     const max = 1280, k = Math.min(1, max / Math.max(im.width, im.height));
     const c = document.createElement('canvas'); c.width = Math.round(im.width * k); c.height = Math.round(im.height * k);
     c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); URL.revokeObjectURL(url);
-    try { localStorage.setItem('maira:fundo', c.toDataURL('image/jpeg', 0.82)); toast('Foto de fundo aplicada ✨'); } catch { toast('Foto muito grande, tente outra'); }
+    try { localStorage.setItem('maira:fundo', c.toDataURL('image/jpeg', 0.82)); cfg.semFundo = false; salvar(); toast('Foto de fundo aplicada ✨'); } catch { toast('Foto muito grande, tente outra'); }
     render();
   };
   im.onerror = () => toast('Não consegui abrir essa foto');
@@ -940,7 +941,7 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden) { re
 /* Luz noturna */
 $('#btnTema').addEventListener('click', () => { cfg.tema = document.documentElement.classList.contains('noite') ? 'claro' : 'noite'; salvar(); render(); toast(cfg.tema === 'noite' ? 'Tema escuro' : 'Tema claro'); });
 $$('#nav button').forEach(b => b.insertAdjacentHTML('afterbegin', `<i>${ic(b.dataset.ic)}</i>`));
-(() => { const im = new Image(); im.onload = () => { ILUS = im.src; render(); }; im.src = 'img/capa.png'; })();
+(() => { const im = new Image(); im.onload = () => { ILUS = im.src; render(); }; im.src = 'img/maya.jpg'; })();
 $('#luz').addEventListener('click', () => { $('#luz').hidden = true; });
 
 /* Botão voltar do Android */
@@ -969,5 +970,5 @@ function boasVindas() {
   <p class="mute" style="font-size:.9rem">Depois de tocar em Começar, permita as notificações para receber os lembretes.</p>
   <button class="btn bloco" style="margin-top:8px" data-a="inicioOk">Começar</button>`, true);
 }
-if (!cfg.iniciado) { boasVindas(); const im = new Image(); im.onload = () => { ILUS = im.src; if (!cfg.iniciado && !$('#modal').hidden) { const v = $('#bvDpp').value; boasVindas(); $('#bvDpp').value = v; } }; im.src = 'img/capa.png'; }
+if (!cfg.iniciado) { boasVindas(); const im = new Image(); im.onload = () => { ILUS = im.src; if (!cfg.iniciado && !$('#modal').hidden) { const v = $('#bvDpp').value; boasVindas(); $('#bvDpp').value = v; } }; im.src = 'img/maya.jpg'; }
 })();
