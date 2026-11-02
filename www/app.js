@@ -591,7 +591,7 @@ function vMarcos() {
   <input id="marcoTxt" placeholder="Que momento foi esse?">
   <label>Quando</label><input id="marcoData" type="date" value="${paraInput(Date.now()).slice(0, 10)}">
   <label>Uma frase sobre ele (opcional)</label><input id="marcoNota" placeholder="Ex.: Ela sorriu olhando pro papai">
-  <label class="add-midia">${ic('image')} Adicionar fotos ou vídeos<input type="file" accept="image/*,video/*" multiple data-midia="novo" hidden></label>
+  ${botoesMidia('novo')}
   <div class="midias-prev" id="prevMidias">${RASCUNHO.map(m => `<div style="background-image:url(${m.th})"></div>`).join('')}</div>
   <button class="btn bloco" style="margin-top:12px" data-a="marcoAdd">${ic('heart')} Guardar momento</button></div>`;
   if (lista.length) h += `<div class="polas">${lista.map(m => { const md = m.midias || []; const th = md[0] && md[0].th; return `<button class="pola" data-a="marcoVer" data-id="${m.id}"><div class="ft" style="${th ? `background-image:url(${th})` : ''}">${th ? '' : ic('star')}</div>${md.length > 1 ? `<span class="qtd">${ic('image')}${md.length}</span>` : ''}<b>${esc(m.texto)}</b><small>${data(m.t)}</small></button>`; }).join('')}</div>`;
@@ -602,12 +602,35 @@ async function abrirMarco(id) {
   const md = m.midias || [];
   modal(`<h2>${esc(m.texto)}</h2><p class="mute" style="margin-top:-8px">${dataExtenso(m.t)}</p>${m.nota ? `<p style="font-size:1.05rem">${esc(m.nota)}</p>` : ''}
     <div class="det-midia" id="detMidia">${md.map((x, i) => `<div data-k="${x.k}" data-tipo="${x.tipo}" data-i="${i}" style="aspect-ratio:1;border-radius:18px;margin-bottom:10px;background:var(--rosa-s) url(${x.th}) center/cover"></div>`).join('')}</div>
-    <label class="add-midia">${ic('plus')} Adicionar fotos ou vídeos<input type="file" accept="image/*,video/*" multiple data-midia="${m.id}" hidden></label>
+    ${botoesMidia(m.id)}
     <div class="grade" style="margin-top:12px">${md.length ? `<button class="btn" data-a="filme" data-id="${m.id}">${ic('play')} Assistir</button>` : '<span></span>'}<button class="btn sec" data-a="marcoApagar" data-id="${m.id}">${ic('trash-2')} Apagar</button></div>`);
   for (const el of $$('#detMidia [data-k]')) {
     const u = await urlMidia(el.dataset.k); if (!u) continue;
-    el.outerHTML = el.dataset.tipo === 'video' ? `<div class="vid-wrap"><video src="${u}" playsinline preload="metadata"></video><button class="vid-play" data-a="filme" data-id="${m.id}" data-i="${el.dataset.i}">${ic('play')}</button></div>` : `<img src="${u}" alt="" data-a="filme" data-id="${m.id}" data-i="${el.dataset.i}">`;
+    const salvarBtn = `<button class="btn sec mini salvar-midia" data-a="midiaSalvar" data-k="${el.dataset.k}" data-tipo="${el.dataset.tipo}">${ic('download')} Salvar / compartilhar</button>`;
+    el.outerHTML = (el.dataset.tipo === 'video' ? `<div class="vid-wrap"><video src="${u}" playsinline preload="metadata"></video><button class="vid-play" data-a="filme" data-id="${m.id}" data-i="${el.dataset.i}">${ic('play')}</button></div>` : `<img src="${u}" alt="" data-a="filme" data-id="${m.id}" data-i="${el.dataset.i}">`) + salvarBtn;
   }
+}
+function botoesMidia(alvo) {
+  return `<div class="midia-btns">
+    <label class="mbtn">${ic('camera')}<span>Tirar foto</span><input type="file" accept="image/*" capture="environment" data-midia="${alvo}" hidden></label>
+    <label class="mbtn">${ic('video')}<span>Gravar vídeo</span><input type="file" accept="video/*" capture="environment" data-midia="${alvo}" hidden></label>
+    <label class="mbtn">${ic('images')}<span>Da galeria</span><input type="file" accept="image/*,video/*" multiple data-midia="${alvo}" hidden></label></div>`;
+}
+async function salvarMidia(k, tipo) {
+  const blob = await MDB.get(k); if (!blob) return toast('Arquivo não encontrado');
+  const ext = tipo === 'video' ? 'mp4' : 'jpg', nome = `${cfg.bebe}-${k}.${ext}`.toLowerCase();
+  if (NATIVO && CAP.isPluginAvailable && CAP.isPluginAvailable('Filesystem') && CAP.isPluginAvailable('Share')) {
+    if (blob.size > 80 * 1024 * 1024) return toast('Vídeo grande demais para compartilhar por aqui');
+    try {
+      toast('Preparando...', 3000);
+      const b64 = await new Promise((ok, erro) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(',')[1]); r.onerror = () => erro(r.error); r.readAsDataURL(blob); });
+      const w = await plugin('Filesystem').writeFile({ path: nome, data: b64, directory: 'CACHE' });
+      await plugin('Share').share({ title: cfg.bebe, files: [w.uri], dialogTitle: 'Salvar ou enviar' });
+    } catch (e) { if (!/cancel/i.test(String(e && e.message || e))) toast('Não consegui compartilhar: ' + (e && e.message || e)); }
+    return;
+  }
+  if (NATIVO) return toast('Instale a versão nova do app (APK) para salvar fotos');
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = nome; a.click();
 }
 function dataExtenso(t) { return new Date(t).toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' }); }
 
@@ -980,6 +1003,7 @@ const A = {
   marcoAdd: () => { const t = $('#marcoTxt').value.trim(); if (!t) return toast('Escreva qual foi o momento'); S.marcos.push({ id: uid(), t: dataLocal($('#marcoData').value) || Date.now(), texto: t, nota: $('#marcoNota').value.trim(), midias: RASCUNHO }); RASCUNHO = []; salvar(); render(); toast('Momento guardado 💛'); },
   marcoVer: el => abrirMarco(el.dataset.id),
   marcoApagar: async el => { if (!confirm('Apagar este momento e as fotos dele?')) return; const m = S.marcos.find(x => x.id === el.dataset.id); for (const x of (m.midias || [])) { try { await MDB.del(x.k); } catch {} } S.marcos = S.marcos.filter(x => x.id !== m.id); salvar(); fecharModal(); render(); },
+  midiaSalvar: el => salvarMidia(el.dataset.k, el.dataset.tipo),
   filme: el => { fecharModal(); abrirFilme(el.dataset.id, +(el.dataset.i || 0)); },
   // Mãe
   agua: el => { S.agua.push({ id: uid(), t: Date.now(), ml: +el.dataset.ml }); vibrar(); salvar(); render(); },
@@ -1126,7 +1150,7 @@ document.addEventListener('change', e => {
   else if (el.dataset.ch) A[el.dataset.ch](el);
   else if (el.dataset.foto && el.files[0]) carregarFoto(el.files[0]);
   else if (el.dataset.midia && el.files.length) {
-    const alvo = el.dataset.midia; const files = [...el.files]; toast('Guardando ' + files.length + (files.length === 1 ? ' arquivo...' : ' arquivos...'), 8000);
+    const alvo = el.dataset.midia; const files = [...el.files]; el.value = ''; toast('Guardando ' + files.length + (files.length === 1 ? ' arquivo...' : ' arquivos...'), 8000);
     processarArquivos(files).then(novos => {
       if (alvo === 'novo') { const txt = $('#marcoTxt') && $('#marcoTxt').value, nota = $('#marcoNota') && $('#marcoNota').value; RASCUNHO = RASCUNHO.concat(novos); render(); if ($('#marcoTxt')) { $('#marcoTxt').value = txt || ''; $('#marcoNota').value = nota || ''; } }
       else { const m = S.marcos.find(x => x.id === alvo); m.midias = (m.midias || []).concat(novos); salvar(); render(); abrirMarco(alvo); }
