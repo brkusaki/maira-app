@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#f6ede6">
+<title>Maíra & Maya</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header id="topo">
+  <div>
+    <div id="saudacao">Olá</div>
+    <div id="subtitulo"></div>
+  </div>
+  <button id="btnNoite" class="icone" aria-label="Luz noturna">🌙</button>
+</header>
+<main id="view"></main>
+<nav id="nav">
+  <button data-tab="inicio" class="ativo"><span>🏠</span>Início</button>
+  <button data-tab="maya"><span>👶</span>Maya</button>
+  <button data-tab="mae"><span>🌷</span>Mãe</button>
+  <button data-tab="parto"><span>🤰</span>Parto</button>
+  <button data-tab="mais"><span>☰</span>Mais</button>
+</nav>
+<div id="modal" hidden><div id="modalBox"></div></div>
+<div id="toast" hidden></div>
+<div id="luz" hidden><div>Toque para sair</div></div>
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

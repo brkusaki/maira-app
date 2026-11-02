@@ -1,0 +1,33 @@
+const { chromium } = require('playwright');
+(async () => {
+  const b = await chromium.launch();
+  const p = await b.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 });
+  const erros = []; p.on('pageerror', e => erros.push(e.message)); p.on('console', m => m.type()==='error' && erros.push(m.text()));
+  await p.addInitScript(() => { Date.prototype.getHours = function(){ return 14; }; });
+  await p.goto('http://localhost:8765/');
+  const sh = async n => p.screenshot({ path: `/home/claude/maira/shots/${n}.png` });
+  await sh('01-boasvindas');
+  await p.fill('#bvDpp', '2026-11-20'); await p.fill('#bvTel', '15 99777-1234');
+  await p.click('[data-a=inicioOk]'); await p.waitForTimeout(300); await sh('02-inicio-gestacao');
+  await p.click('#nav [data-tab=parto]'); await p.click('[data-a=contr]'); await p.waitForTimeout(1200); await sh('03-contracao');
+  await p.click('[data-a=contr]');
+  // simula contrações regulares
+  await p.evaluate(() => { const S = JSON.parse(localStorage.getItem('maira:v1')); const n = Date.now(); S.contr = []; for (let i=0;i<13;i++){ const ini = n - (60-i*5)*60000; S.contr.push({id:'c'+i, ini, fim: ini+65000}); } localStorage.setItem('maira:v1', JSON.stringify(S)); });
+  await p.reload(); await p.click('#nav [data-tab=parto]'); await sh('04-contracoes-alerta');
+  await p.click('[data-sub=mala]'); await sh('05-mala');
+  await p.click('#nav [data-tab=inicio]'); await p.click('[data-a=nasceu]'); await p.fill('#nP','3250'); await p.fill('#nC','49');
+  await p.click('[data-a=nasceuOk]'); await p.waitForTimeout(300);
+  await p.click('#nav [data-tab=maya]'); await p.click('[data-a=mIni][data-l=E]'); await p.waitForTimeout(1100); await p.click('[data-a=mLado][data-l=D]'); await p.waitForTimeout(1100); await sh('06-mamada');
+  await p.click('[data-a=mFim]');
+  await p.click('#nav [data-tab=inicio]'); await p.click('[data-a=fralda][data-x="1"][data-c="0"]'); await p.waitForTimeout(300); await sh('07-inicio-bebe');
+  await p.click('#nav [data-tab=mae]'); await p.click('[data-a=agua][data-ml="300"]'); await p.click('[data-a=humor][data-n="0"]'); await sh('08-mae');
+  await p.click('[data-sub=remedios]'); await p.click('[data-a=remNovo]'); await p.fill('#rmNome','Vitamina D'); await p.selectOption('#rmQuem','bebe'); await p.click('[data-a=remSalvar]'); await p.click('[data-a=dose]'); await sh('09-remedios');
+  await p.click('#nav [data-tab=maya]'); await p.click('[data-sub=vacinas]'); await sh('10-vacinas');
+  await p.click('[data-sub=ninar]'); await sh('11-ninar');
+  await p.click('#nav [data-tab=mais]'); await p.click('[data-sub=ajustes]'); await sh('12-ajustes');
+  await p.click('[data-sub=resumo]'); await sh('13-resumo');
+  await p.evaluate(()=>{ JSON.parse(localStorage.getItem('maira:v1')).cfg.tema; });
+  await p.click('[data-sub=ajustes]'); await p.click('[data-a=tema][data-t=noite]'); await p.click('#nav [data-tab=inicio]'); await sh('14-noite');
+  console.log('ERROS:', JSON.stringify(erros));
+  await b.close();
+})();

@@ -1,0 +1,9 @@
+{
+  "appId": "br.com.bruno.mairamaya",
+  "appName": "Maíra & Maya",
+  "webDir": "www",
+  "android": { "backgroundColor": "#f6ede6" },
+  "plugins": {
+    "LocalNotifications": { "smallIcon": "ic_stat_icon", "iconColor": "#d9776f" }
+  }
+}

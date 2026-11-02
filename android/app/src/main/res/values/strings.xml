@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Maíra &amp; Maya</string>
+    <string name="title_activity_main">Maíra &amp; Maya</string>
+    <string name="package_name">br.com.bruno.mairamaya</string>
+    <string name="custom_url_scheme">br.com.bruno.mairamaya</string>
+</resources>

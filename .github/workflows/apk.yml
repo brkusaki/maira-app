@@ -1,0 +1,32 @@
+name: Gerar APK
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: 21 }
+      - run: npm ci
+      - run: npx cap sync android
+      - name: Chave fixa (para as atualizações instalarem por cima)
+        run: mkdir -p ~/.android && cp android-keystore/debug.keystore ~/.android/debug.keystore
+      - name: Compilar
+        working-directory: android
+        run: chmod +x gradlew && ./gradlew assembleDebug --no-daemon
+      - run: cp android/app/build/outputs/apk/debug/app-debug.apk Maira-e-Maya.apk
+      - uses: actions/upload-artifact@v4
+        with: { name: Maira-e-Maya, path: Maira-e-Maya.apk }
+      - name: Publicar na página de Releases
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ github.run_number }}
+          name: Maíra & Maya v${{ github.run_number }}
+          files: Maira-e-Maya.apk
