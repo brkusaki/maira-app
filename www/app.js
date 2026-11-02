@@ -23,6 +23,8 @@ S.cfg = Object.assign({
   ],
 }, S.cfg || {});
 for (const k of ['contr', 'chutes', 'mam', 'fr', 'sono', 'cres', 'rem', 'doses', 'agua', 'humor', 'marcos', 'lemb']) S[k] = S[k] || [];
+const TEL_BRUNO = '15981125349';
+S.cfg.telPai = TEL_BRUNO;
 S.chk = S.chk || {}; S.plano = S.plano || {}; S.ativo = S.ativo || {}; S.extraMala = S.extraMala || {};
 const salvar = () => { localStorage.setItem(LS, JSON.stringify(S)); agendarDepois(); };
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
@@ -51,7 +53,7 @@ const ult24 = (arr, campo = 'ini') => arr.filter(x => x[campo] >= Date.now() - D
 const ladoNome = l => ({ E: 'esquerdo', D: 'direito' }[l] || '');
 
 function toast(msg, ms = 2600) { const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => t.hidden = true, ms); }
-function modal(html) { $('#modalBox').innerHTML = html; $('#modal').hidden = false; }
+function modal(html, centro) { $('#modal').classList.toggle('centro', !!centro); $('#modalBox').innerHTML = html; $('#modal').hidden = false; }
 function fecharModal() { $('#modal').hidden = true; $('#modalBox').innerHTML = ''; }
 $('#modal').addEventListener('click', e => { if (e.target.id === 'modal' && cfg.iniciado) fecharModal(); });
 
@@ -210,7 +212,7 @@ function tema() {
   const noite = cfg.tema === 'noite' || (cfg.tema === 'auto' && (h >= 19 || h < 6));
   const R = document.documentElement;
   R.classList.toggle('noite', noite);
-  const cor = noite ? '#15100e' : '#f7efe9';
+  const cor = noite ? '#1c1117' : '#fdecee';
   $('meta[name=theme-color]').content = cor;
   $('#btnTema').innerHTML = ic(noite ? 'sun' : 'moon');
   if (SB) { SB.setBackgroundColor({ color: cor }).catch(() => {}); SB.setStyle({ style: noite ? 'DARK' : 'LIGHT' }).catch(() => {}); }
@@ -234,7 +236,18 @@ function render() {
 /* ---------------- Telas: Início ---------------- */
 function tile(icone, cor, txt, attrs, sub = '') { return `<button class="acao" ${attrs}><i class="bolha b-${cor}">${ic(icone)}</i><span>${txt}${sub ? `<small>${sub}</small>` : ''}</span></button>`; }
 function banner(icone, cor, txt, desde, attrs) { return `<button class="card linha entre" ${attrs}><span class="linha"><i class="bolha b-${cor}">${ic(icone)}</i><b>${txt}</b></span><b class="num" data-desde="${desde}"></b></button>`; }
+let SPRITE = null;
+fetch('img/sprite.json').then(r => r.ok ? r.json() : null).then(j => { if (!j) return; const im = new Image(); im.onload = () => { SPRITE = Object.assign({ w: im.width / j.quadros, h: im.height, src: im.src }, j); render(); }; im.src = 'img/' + j.arquivo; }).catch(() => {});
+let spriteI = 0, spriteDir = 1;
+(function passo() { setTimeout(passo, 1000 / ((SPRITE && SPRITE.fps) || 6));
+  if (!SPRITE) return; const el = document.querySelector('.capa .sprite'); if (!el) return;
+  const n = SPRITE.quadros;
+  if (SPRITE.vaiVolta) { if (spriteI + spriteDir >= n || spriteI + spriteDir < 0) spriteDir *= -1; spriteI += spriteDir; } else spriteI = (spriteI + 1) % n;
+  el.style.backgroundPosition = (n > 1 ? spriteI / (n - 1) * 100 : 0) + '% 0';
+})();
 function capa(rot, grande, sub, extra = '') {
+  if (SPRITE) return `<div class="capa com-ilus"><div class="sprite" style="aspect-ratio:${SPRITE.w}/${SPRITE.h};background-image:url(${SPRITE.src});background-size:${SPRITE.quadros * 100}% 100%"></div>
+  <div class="txt"><div class="rotulo">${rot}</div><div class="grande">${grande}</div><div class="sub">${sub}</div>${extra}</div></div>`;
   return `<div class="capa ${ILUS ? 'com-ilus' : ''}"><div class="deco">${ic(nascida() ? 'heart' : 'moon')}</div>${ILUS ? `<img class="ilus" src="${ILUS}" alt="">` : ''}
   <div class="txt"><div class="rotulo">${rot}</div><div class="grande">${grande}</div><div class="sub">${sub}</div>${extra}</div></div>`;
 }
@@ -269,6 +282,7 @@ function vInicio() {
       ${tile('luggage', 'verde', 'Mala', 'data-a="ir" data-tab="parto" data-sub="mala"', `${feitos} de ${tot} itens`)}
       ${tile('message-circle-heart', 'lilas', 'Chamar ' + esc(cfg.pai), 'data-a="ir" data-tab="mae" data-sub="bruno"', 'pelo WhatsApp')}
     </div>
+    ${cardMomentos()}
     <button class="btn destaque-btn" data-a="nasceu">${ic('party-popper')} A ${esc(cfg.bebe)} nasceu!</button>
     <button class="card linha" data-a="ir" data-tab="parto" data-sub="quando"><i class="bolha b-alerta">${ic('siren')}</i><span><h3>Quando ir para a maternidade?</h3><small>Bolsa, sangramento, ${esc(cfg.bebe)} mexendo menos, contrações.</small></span></button>`;
   } else {
@@ -284,6 +298,7 @@ function vInicio() {
       ${tile('pill', 'verde', 'Remédios', 'data-a="ir" data-tab="mae" data-sub="remedios"')}
       ${tile('message-circle-heart', 'rosa', esc(cfg.pai), 'data-a="ir" data-tab="mae" data-sub="bruno"')}
     </div>
+    ${cardMomentos()}
     <div class="card"><div class="linha entre"><span class="rotulo">Última mamada</span>${u ? `<small data-rel="${u.ini}"></small>` : ''}</div>
       ${u ? `<div class="linha entre" style="margin-top:6px"><span class="grande" style="font-size:2rem">${hora(u.ini)}</span><span class="tag">${u.tipo === 'peito' ? 'terminou no ' + ladoNome(u.ladoFim) : 'mamadeira ' + (u.ml || '') + ' ml'}</span></div>
       <p class="mute">Próxima por volta das <b style="color:var(--ink)">${hora(u.ini + cfg.intervaloMamada * MIN)}</b>${u.tipo === 'peito' ? ' · começar pelo ' + ladoNome(u.ladoFim === 'E' ? 'D' : 'E') : ''} · ${ult24(S.mam).length} em 24h</p>` : '<p class="mute">Nenhuma registrada ainda.</p>'}</div>
@@ -297,6 +312,10 @@ function vInicio() {
   if (prox.length) h += `<div class="card"><span class="rotulo">Próximos lembretes</span><ul class="lista">${prox.map(n => `<li><span>${esc(n.title)}</span><small>${dataHora(n.at)}</small></li>`).join('')}</ul></div>`;
   return h;
 }
+function cardMomentos() {
+  const ths = S.marcos.slice().sort((a, b) => b.t - a.t).flatMap(m => (m.midias || []).map(x => x.th)).filter(Boolean).slice(0, 5);
+  return `<button class="card" data-a="ir" data-tab="maya" data-sub="marcos"><div class="linha entre"><span class="linha"><i class="bolha b-rosa">${ic('image')}</i><span><h3 style="margin:0">Nossos momentos</h3><small>${S.marcos.length ? S.marcos.length + (S.marcos.length === 1 ? ' momento guardado' : ' momentos guardados') : 'Guarde fotos e vídeos de cada fase'}</small></span></span>${ic('plus')}</div>${ths.length ? `<div class="strip">${ths.map(t => `<div style="background-image:url(${t})"></div>`).join('')}</div>` : ''}</button>`;
+}
 function proximaVacina() {
   if (!nascida()) return null; const n = inicioDia(+new Date(cfg.nasc));
   const v = C.vacinas.find(([id]) => !S.chk['vac:' + id]); if (!v) return null;
@@ -306,8 +325,8 @@ function proximaVacina() {
 /* ---------------- Telas: Maya ---------------- */
 function vMaya() {
   const sub = V.sub.maya;
-  let h = abas('maya', [['mamadas', 'Mamadas'], ['fraldas', 'Fraldas'], ['sono', 'Sono'], ['ninar', 'Ninar'], ['cres', 'Peso'], ['vacinas', 'Vacinas'], ['testes', 'Testes'], ['marcos', 'Marcos'], ['alertas', 'Alertas']]);
-  if (!nascida() && ['mamadas', 'fraldas', 'sono', 'cres', 'vacinas', 'testes', 'marcos'].includes(sub)) h += `<div class="card"><p>Isso começa a contar quando a ${esc(cfg.bebe)} nascer. Já pode ir conhecendo! 💛</p></div>`;
+  let h = abas('maya', [['mamadas', 'Mamadas'], ['fraldas', 'Fraldas'], ['sono', 'Sono'], ['ninar', 'Ninar'], ['cres', 'Peso'], ['vacinas', 'Vacinas'], ['testes', 'Testes'], ['marcos', 'Momentos'], ['alertas', 'Alertas']]);
+  if (!nascida() && ['mamadas', 'fraldas', 'sono', 'cres', 'vacinas', 'testes'].includes(sub)) h += `<div class="card"><p>Isso começa a contar quando a ${esc(cfg.bebe)} nascer. Já pode ir conhecendo! 💛</p></div>`;
   return h + ({ mamadas: vMamadas, fraldas: vFraldas, sono: vSono, ninar: vNinar, cres: vCres, vacinas: vVacinas, testes: vTestes, marcos: vMarcos, alertas: () => vAlertas(C.alertasBebe, 'Quando procurar ajuda para a ' + esc(cfg.bebe)) }[sub])();
 }
 
@@ -428,16 +447,144 @@ function vVacinas() {
 function vTestes() {
   return `<div class="card">${C.testes.map(([id, n, d]) => { const k = 'teste:' + id, f = S.chk[k]; return `<label class="check ${f ? 'feito' : ''}"><input type="checkbox" data-chk="${k}" ${f ? 'checked' : ''}><span><b class="t">${n}</b><br><small>${d}${f && f !== true ? ' · feito ' + data(f) : ''}</small></span></label>`; }).join('')}</div>`;
 }
-function vMarcos() {
-  const sug = ['Primeiro banho', 'Conheceu a irmã e o irmão', 'Caiu o umbigo', 'Primeira saída de casa', 'Primeiro sorriso', 'Segurou o dedo', 'Primeira noite inteira'];
-  return `<div class="card"><h3>Guardar um momento</h3><div class="chips" style="margin-bottom:8px">${sug.map(s => `<button class="chip" data-a="marcoSug" data-t="${esc(s)}">${s}</button>`).join('')}</div>
-  <input id="marcoTxt" placeholder="Escreva o momento..."><label>Quando</label><input id="marcoData" type="date" value="${paraInput(Date.now()).slice(0, 10)}">
-  <button class="btn bloco" style="margin-top:10px" data-a="marcoAdd">Guardar</button></div>` +
-  historico(S.marcos.slice().sort((a, b) => b.t - a.t), m => `<span><b>${data(m.t)}</b> · ${esc(m.texto)}</span>`, 'marcos');
-}
 function vAlertas(lista, titulo) {
   return `<div class="card alerta"><h3>${titulo}</h3><p>Na dúvida, sempre ligue. Emergência: <a href="tel:192"><b>SAMU 192</b></a></p></div>` +
     lista.map(([t, d]) => `<details><summary>${t}</summary><p>${d}</p></details>`).join('');
+}
+
+/* ---------------- Mídia (fotos/vídeos dos momentos) em IndexedDB ---------------- */
+const MDB = {
+  db: null,
+  abrir() { return this.db || (this.db = new Promise((ok, erro) => { const r = indexedDB.open('maira-midia', 1); r.onupgradeneeded = () => r.result.createObjectStore('m'); r.onsuccess = () => ok(r.result); r.onerror = () => erro(r.error); })); },
+  async op(modo, fn) { const db = await this.abrir(); return new Promise((ok, erro) => { const t = db.transaction('m', modo); const req = fn(t.objectStore('m')); t.oncomplete = () => ok(req && req.result); t.onerror = () => erro(t.error); }); },
+  put(k, v) { return this.op('readwrite', s => s.put(v, k)); },
+  get(k) { return this.op('readonly', s => s.get(k)); },
+  del(k) { return this.op('readwrite', s => s.delete(k)); },
+};
+const urls = {};
+async function urlMidia(k) { if (urls[k]) return urls[k]; const b = await MDB.get(k); if (!b) return ''; return urls[k] = URL.createObjectURL(b); }
+function reduzirFoto(file, max = 1600, q = 0.85) {
+  return new Promise((ok, erro) => {
+    const u = URL.createObjectURL(file); const im = new Image();
+    im.onload = () => { const k = Math.min(1, max / Math.max(im.width, im.height)); const c = document.createElement('canvas'); c.width = Math.round(im.width * k); c.height = Math.round(im.height * k); c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); URL.revokeObjectURL(u); c.toBlob(b => ok({ blob: b, canvas: c }), 'image/jpeg', q); };
+    im.onerror = () => { URL.revokeObjectURL(u); erro(new Error('foto')); }; im.src = u;
+  });
+}
+function miniatura(fonte, w, h, lado = 240) { const c = document.createElement('canvas'); const k = lado / Math.min(w, h); c.width = c.height = lado; c.getContext('2d').drawImage(fonte, (lado - w * k) / 2, (lado - h * k) / 2, w * k, h * k); return c.toDataURL('image/jpeg', 0.7); }
+function quadroVideo(file) {
+  return new Promise(ok => {
+    const v = document.createElement('video'); v.muted = true; v.playsInline = true; v.preload = 'auto'; v.src = URL.createObjectURL(file);
+    const fim = th => { URL.revokeObjectURL(v.src); ok(th); };
+    v.onloadeddata = () => { v.currentTime = Math.min(0.5, (v.duration || 1) / 2); };
+    v.onseeked = () => { try { fim(miniatura(v, v.videoWidth, v.videoHeight)); } catch { fim(''); } };
+    v.onerror = () => fim(''); setTimeout(() => fim(''), 8000);
+  });
+}
+let RASCUNHO = [];   // mídias escolhidas antes de guardar o momento
+async function processarArquivos(files) {
+  const novos = [];
+  for (const f of files) {
+    try {
+      const k = 'm' + uid();
+      if (f.type.startsWith('video')) {
+        if (f.size > 150 * 1024 * 1024) { toast('Vídeo muito grande (máx. 150 MB)'); continue; }
+        const th = await quadroVideo(f); await MDB.put(k, f); novos.push({ k, tipo: 'video', th });
+      } else {
+        const { blob, canvas } = await reduzirFoto(f); await MDB.put(k, blob);
+        novos.push({ k, tipo: 'foto', th: miniatura(canvas, canvas.width, canvas.height) });
+      }
+    } catch (e) { console.warn(e); toast('Não consegui abrir um dos arquivos'); }
+  }
+  return novos;
+}
+
+const SUG_GRAVIDEZ = ['Barrigão de ' + (gestacao() ? gestacao().sem : 38) + ' semanas', 'Quartinho pronto', 'Mala pronta', 'Chá de bebê', 'Última foto da barriga'];
+const SUG_BEBE = ['Primeiro banho', 'Conheceu a irmã e o irmão', 'Caiu o umbigo', 'Primeira saída de casa', 'Primeiro sorriso', 'Segurou o dedo', 'Primeira noite inteira', 'Primeira vez no colo do papai'];
+const temMidia = () => S.marcos.some(m => (m.midias || []).length);
+
+function vMarcos() {
+  const sug = nascida() ? SUG_BEBE : SUG_GRAVIDEZ.concat(['Nasceu! 💛']);
+  const lista = S.marcos.slice().sort((a, b) => b.t - a.t);
+  const nFotos = S.marcos.reduce((s, m) => s + (m.midias || []).length, 0);
+  let h = '';
+  if (nFotos) h += `<button class="filme-btn" data-a="filme"><span class="play">${ic('play')}</span><span><b style="font-size:1.1rem">Ver nossos momentos</b><br><small>${lista.length} ${lista.length === 1 ? 'momento' : 'momentos'} · ${nFotos} ${nFotos === 1 ? 'foto/vídeo' : 'fotos e vídeos'}</small></span></button>`;
+  h += `<div class="card"><h3>Guardar um momento</h3><div class="chips" style="margin:8px 0 10px">${sug.map(s => `<button class="chip" data-a="marcoSug" data-t="${esc(s)}">${esc(s)}</button>`).join('')}</div>
+  <input id="marcoTxt" placeholder="Que momento foi esse?">
+  <label>Quando</label><input id="marcoData" type="date" value="${paraInput(Date.now()).slice(0, 10)}">
+  <label>Uma frase sobre ele (opcional)</label><input id="marcoNota" placeholder="Ex.: Ela sorriu olhando pro papai">
+  <label class="add-midia">${ic('image')} Adicionar fotos ou vídeos<input type="file" accept="image/*,video/*" multiple data-midia="novo" hidden></label>
+  <div class="midias-prev" id="prevMidias">${RASCUNHO.map(m => `<div style="background-image:url(${m.th})"></div>`).join('')}</div>
+  <button class="btn bloco" style="margin-top:12px" data-a="marcoAdd">${ic('heart')} Guardar momento</button></div>`;
+  if (lista.length) h += `<div class="polas">${lista.map(m => { const md = m.midias || []; const th = md[0] && md[0].th; return `<button class="pola" data-a="marcoVer" data-id="${m.id}"><div class="ft" style="${th ? `background-image:url(${th})` : ''}">${th ? '' : ic('star')}</div>${md.length > 1 ? `<span class="qtd">${ic('image')}${md.length}</span>` : ''}<b>${esc(m.texto)}</b><small>${data(m.t)}</small></button>`; }).join('')}</div>`;
+  return h;
+}
+async function abrirMarco(id) {
+  const m = S.marcos.find(x => x.id === id); if (!m) return;
+  const md = m.midias || [];
+  modal(`<h2>${esc(m.texto)}</h2><p class="mute" style="margin-top:-8px">${dataExtenso(m.t)}</p>${m.nota ? `<p style="font-size:1.05rem">${esc(m.nota)}</p>` : ''}
+    <div class="det-midia" id="detMidia">${md.map(x => `<div data-k="${x.k}" data-tipo="${x.tipo}" style="aspect-ratio:1;border-radius:18px;margin-bottom:10px;background:var(--rosa-s) url(${x.th}) center/cover"></div>`).join('')}</div>
+    <label class="add-midia">${ic('plus')} Adicionar fotos ou vídeos<input type="file" accept="image/*,video/*" multiple data-midia="${m.id}" hidden></label>
+    <div class="grade" style="margin-top:12px">${md.length ? `<button class="btn" data-a="filme" data-id="${m.id}">${ic('play')} Assistir</button>` : '<span></span>'}<button class="btn sec" data-a="marcoApagar" data-id="${m.id}">${ic('trash-2')} Apagar</button></div>`);
+  for (const el of $$('#detMidia [data-k]')) {
+    const u = await urlMidia(el.dataset.k); if (!u) continue;
+    el.outerHTML = el.dataset.tipo === 'video' ? `<video src="${u}" controls playsinline poster=""></video>` : `<img src="${u}" alt="">`;
+  }
+}
+function dataExtenso(t) { return new Date(t).toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' }); }
+
+/* Filminho estilo stories */
+const F = { cenas: [], i: 0, t: null, pausado: false };
+async function abrirFilme(soId) {
+  const ms = S.marcos.filter(m => (m.midias || []).length && (!soId || m.id === soId)).sort((a, b) => a.t - b.t);
+  F.cenas = [];
+  if (!soId) F.cenas.push({ tipo: 'abertura' });
+  for (const m of ms) for (const x of m.midias) F.cenas.push({ tipo: x.tipo, k: x.k, titulo: m.texto, quando: dataExtenso(m.t), nota: m.nota });
+  if (!soId) F.cenas.push({ tipo: 'fim' });
+  const el = document.createElement('div'); el.id = 'filme';
+  el.innerHTML = `<div class="barras">${F.cenas.map(() => '<i><b></b></i>').join('')}</div><button class="fechar" data-f="fechar">✕</button><div id="palco"></div>`;
+  document.body.appendChild(el);
+  el.addEventListener('click', e => {
+    if (e.target.closest('[data-f=fechar]')) return fecharFilme();
+    const x = e.clientX / innerWidth;
+    if (x < 0.3) cena(F.i - 1); else if (x > 0.7) cena(F.i + 1); else pausarFilme();
+  });
+  try { if (Som.tipo) pararSom(); } catch {}
+  cena(0);
+}
+function fecharFilme() { clearTimeout(F.t); const el = $('#filme'); if (el) el.remove(); }
+function pausarFilme() {
+  F.pausado = !F.pausado; const v = $('#filme .cena.on video');
+  if (v) F.pausado ? v.pause() : v.play();
+  else if (F.pausado) clearTimeout(F.t); else F.t = setTimeout(() => cena(F.i + 1), 3000);
+  toast(F.pausado ? 'Pausado' : 'Continuando', 900);
+}
+async function cena(i) {
+  clearTimeout(F.t); F.pausado = false;
+  if (i < 0) i = 0; if (i >= F.cenas.length) return fecharFilme();
+  F.i = i; const c = F.cenas[i];
+  $$('#filme .barras b').forEach((b, k) => { b.style.transition = 'none'; b.style.width = k < i ? '100%' : '0'; });
+  const palco = $('#palco'); const div = document.createElement('div'); div.className = 'cena' + (i % 2 ? ' alt' : '');
+  let dur = 6500;
+  if (c.tipo === 'abertura') { div.classList.add('abertura'); div.innerHTML = `${ILUS ? `<img src="${ILUS}" alt="">` : ''}<h1>Os momentos da ${esc(cfg.bebe)}</h1><p style="opacity:.9;font-weight:600">com amor, ${esc(cfg.mae)} e ${esc(cfg.pai)} 💛</p>`; dur = 4000; }
+  else if (c.tipo === 'fim') { div.classList.add('abertura'); div.innerHTML = `<h1>Continua...</h1><p style="opacity:.9;font-weight:600">Cada dia com a ${esc(cfg.bebe)} é um momento novo 💛</p>`; dur = 4000; }
+  else {
+    const u = await urlMidia(c.k);
+    const leg = `<div class="leg"><b>${esc(c.titulo)}</b><span>${esc(c.quando)}${c.nota ? ' · ' + esc(c.nota) : ''}</span></div>`;
+    if (c.tipo === 'video') { div.innerHTML = `<video src="${u}" playsinline autoplay></video>${leg}`; dur = 0; }
+    else div.innerHTML = `<img src="${u}" alt="">${leg}`;
+  }
+  palco.appendChild(div);
+  requestAnimationFrame(() => div.classList.add('on'));
+  [...palco.children].slice(0, -1).forEach(o => { o.classList.remove('on'); setTimeout(() => o.remove(), 900); });
+  const barra = $$('#filme .barras b')[i];
+  const anda = ms => { requestAnimationFrame(() => { barra.style.transition = `width ${ms}ms linear`; barra.style.width = '100%'; }); };
+  if (dur) { anda(dur); F.t = setTimeout(() => cena(i + 1), dur); }
+  else {
+    const v = div.querySelector('video');
+    v.onloadedmetadata = () => anda((v.duration || 5) * 1000);
+    v.onended = () => cena(i + 1);
+    v.onerror = () => cena(i + 1);
+  }
 }
 
 /* ---------------- Telas: Mãe ---------------- */
@@ -592,7 +739,6 @@ function vAjustes() {
   <div class="grade"><div><label>Mamãe</label><input data-cfg="mae" value="${esc(cfg.mae)}"></div><div><label>Bebê</label><input data-cfg="bebe" value="${esc(cfg.bebe)}"></div></div>
   <label>Data provável do parto (DPP)</label><input type="date" data-cfg="dpp" value="${esc(cfg.dpp)}">
   <label>Nome do papai</label><input data-cfg="pai" value="${esc(cfg.pai)}">
-  <label>WhatsApp do ${esc(cfg.pai)} (com DDD)</label><input type="tel" data-cfg="telPai" value="${esc(cfg.telPai)}" placeholder="15 99999-9999">
   ${nascida() ? `<label>Nascimento</label><input type="datetime-local" data-cfg="nasc" value="${esc(cfg.nasc)}"><div class="grade"><div><label>Peso ao nascer (g)</label><input type="number" data-cfg="pesoNasc" value="${esc(cfg.pesoNasc)}"></div><div><label>Comprimento (cm)</label><input type="number" data-cfg="compNasc" value="${esc(cfg.compNasc)}"></div></div>` : ''}</div>
   <div class="card"><h3>Notificações</h3><p class="mute" id="notifStatus">Verificando...</p>
   <div class="grade"><button class="btn sec" data-a="notifPedir">Permitir</button><button class="btn sec" data-a="notifTeste">Testar</button></div>
@@ -648,8 +794,11 @@ const A = {
   cresNovo: () => modal(`<h2>📏 Peso e medidas</h2><label>Data</label><input id="cD" type="date" value="${paraInput(Date.now()).slice(0, 10)}"><label>Peso (gramas)</label><input id="cG" type="number" inputmode="numeric" placeholder="3250"><div class="grade"><div><label>Comprimento (cm)</label><input id="cCm" type="number" inputmode="decimal"></div><div><label>Perímetro cefálico (cm)</label><input id="cPc" type="number" inputmode="decimal"></div></div><button class="btn bloco" style="margin-top:14px" data-a="cresSalvar">Salvar</button>`),
   cresSalvar: () => { S.cres.push({ id: uid(), t: dataLocal($('#cD').value) || Date.now(), g: +$('#cG').value || 0, cm: $('#cCm').value, pc: $('#cPc').value }); salvar(); fecharModal(); render(); },
   // Marcos
-  marcoSug: el => { $('#marcoTxt').value = el.dataset.t; },
-  marcoAdd: () => { const t = $('#marcoTxt').value.trim(); if (!t) return; S.marcos.push({ id: uid(), t: dataLocal($('#marcoData').value) || Date.now(), texto: t }); salvar(); render(); toast('Guardado ⭐'); },
+  marcoSug: el => { $('#marcoTxt').value = el.dataset.t; $$('[data-a=marcoSug]').forEach(c => c.classList.toggle('on', c === el)); },
+  marcoAdd: () => { const t = $('#marcoTxt').value.trim(); if (!t) return toast('Escreva qual foi o momento'); S.marcos.push({ id: uid(), t: dataLocal($('#marcoData').value) || Date.now(), texto: t, nota: $('#marcoNota').value.trim(), midias: RASCUNHO }); RASCUNHO = []; salvar(); render(); toast('Momento guardado 💛'); },
+  marcoVer: el => abrirMarco(el.dataset.id),
+  marcoApagar: async el => { if (!confirm('Apagar este momento e as fotos dele?')) return; const m = S.marcos.find(x => x.id === el.dataset.id); for (const x of (m.midias || [])) { try { await MDB.del(x.k); } catch {} } S.marcos = S.marcos.filter(x => x.id !== m.id); salvar(); fecharModal(); render(); },
+  filme: el => { fecharModal(); abrirFilme(el.dataset.id); },
   // Mãe
   agua: el => { S.agua.push({ id: uid(), t: Date.now(), ml: +el.dataset.ml }); vibrar(); salvar(); render(); },
   humor: el => { S.humor = S.humor.filter(x => !mesmoDia(x.t, Date.now())); S.humor.push({ id: uid(), t: Date.now(), n: +el.dataset.n }); salvar(); render(); },
@@ -705,7 +854,7 @@ const A = {
   },
   desfazNasc: () => { if (confirm('Voltar para o modo gestação?')) { cfg.nasc = ''; salvar(); render(); } },
   // Boas-vindas
-  inicioOk: async () => { cfg.dpp = $('#bvDpp').value; cfg.telPai = $('#bvTel').value; cfg.iniciado = true; salvar(); fecharModal(); render(); await N.pedir(); agendarDepois(); },
+  inicioOk: async () => { cfg.dpp = $('#bvDpp').value; cfg.iniciado = true; salvar(); fecharModal(); render(); await N.pedir(); agendarDepois(); },
 };
 function carregarFoto(f) {
   const url = URL.createObjectURL(f); const im = new Image();
@@ -762,6 +911,14 @@ document.addEventListener('change', e => {
   else if (el.dataset.regra) { cfg.regra[el.dataset.regra] = +el.value || cfg.regra[el.dataset.regra]; salvar(); }
   else if (el.dataset.ch) A[el.dataset.ch](el);
   else if (el.dataset.foto && el.files[0]) carregarFoto(el.files[0]);
+  else if (el.dataset.midia && el.files.length) {
+    const alvo = el.dataset.midia; const files = [...el.files]; toast('Guardando ' + files.length + (files.length === 1 ? ' arquivo...' : ' arquivos...'), 8000);
+    processarArquivos(files).then(novos => {
+      if (alvo === 'novo') { const txt = $('#marcoTxt') && $('#marcoTxt').value, nota = $('#marcoNota') && $('#marcoNota').value; RASCUNHO = RASCUNHO.concat(novos); render(); if ($('#marcoTxt')) { $('#marcoTxt').value = txt || ''; $('#marcoNota').value = nota || ''; } }
+      else { const m = S.marcos.find(x => x.id === alvo); m.midias = (m.midias || []).concat(novos); salvar(); render(); abrirMarco(alvo); }
+      toast('Pronto 💛');
+    });
+  }
 });
 document.addEventListener('input', e => {
   const el = e.target;
@@ -789,6 +946,7 @@ $('#luz').addEventListener('click', () => { $('#luz').hidden = true; });
 /* Botão voltar do Android */
 const APP = plugin('App');
 if (APP) APP.addListener('backButton', () => {
+  if ($('#filme')) return fecharFilme();
   if (!$('#luz').hidden) return $('#luz').hidden = true;
   if (!$('#modal').hidden) return fecharModal();
   if (V.tab !== 'inicio') return ir('inicio');
@@ -804,10 +962,12 @@ N.iniciar().then(agendarDepois);
 if (!NATIVO && 'serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
 render();
 setTimeout(() => procurarAtualizacao(), 3000);
-if (!cfg.iniciado) modal(`<h2>Oi, ${esc(cfg.mae)}! 💛</h2>
-  <p>O ${esc(cfg.pai)} fez esse app só pra você e pra ${esc(cfg.bebe)}: contrações, mala da maternidade, mamadas, fraldas, remédios, vacinas e muito mais.</p>
-  <label>Data provável do parto</label><input id="bvDpp" type="date" value="${esc(cfg.dpp)}">
-  <label>WhatsApp do ${esc(cfg.pai)} (com DDD)</label><input id="bvTel" type="tel" value="${esc(cfg.telPai)}" placeholder="15 99999-9999">
-  <p class="mute">Depois de tocar em Começar, permita as notificações para receber os lembretes.</p>
-  <button class="btn bloco" style="margin-top:10px" data-a="inicioOk">Começar</button>`);
+function boasVindas() {
+  modal(`${ILUS ? `<img class="bv-ilus" src="${ILUS}" alt="">` : ''}<h2 style="font-size:1.6rem;margin-bottom:6px">Oi, ${esc(cfg.mae)}! 💛</h2>
+  <p>O ${esc(cfg.pai)} fez esse app só pra você e pra ${esc(cfg.bebe)}: contrações, mala da maternidade, mamadas, fraldas, remédios, vacinas, momentos e muito mais.</p>
+  <label>Quando a ${esc(cfg.bebe)} deve chegar? (data provável do parto)</label><input id="bvDpp" type="date" value="${esc(cfg.dpp)}">
+  <p class="mute" style="font-size:.9rem">Depois de tocar em Começar, permita as notificações para receber os lembretes.</p>
+  <button class="btn bloco" style="margin-top:8px" data-a="inicioOk">Começar</button>`, true);
+}
+if (!cfg.iniciado) { boasVindas(); const im = new Image(); im.onload = () => { ILUS = im.src; if (!cfg.iniciado && !$('#modal').hidden) { const v = $('#bvDpp').value; boasVindas(); $('#bvDpp').value = v; } }; im.src = 'img/capa.png'; }
 })();
