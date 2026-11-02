@@ -72,19 +72,43 @@ window.CONTEUDO = {
     ["linguinha", "Teste da linguinha", "Na maternidade, antes da alta."],
   ],
 
-  // Calendário Nacional de Vacinação 2026 (Ministério da Saúde). dias = idade em dias aprox.
+  // Calendário Nacional de Vacinação 2026 (Ministério da Saúde) — idade em dias aproximada.
+  // [id do grupo, dias, rótulo, [[id da dose, vacina, dose, previne]]]
   vacinas: [
-    ["bcg", 0, "Ao nascer", "BCG (dose única)"],
-    ["hepb", 0, "Ao nascer", "Hepatite B"],
-    ["m2", 60, "2 meses", "Penta 1ª, VIP 1ª, Rotavírus 1ª, Pneumocócica 1ª"],
-    ["m3", 90, "3 meses", "Meningocócica C 1ª"],
-    ["m4", 120, "4 meses", "Penta 2ª, VIP 2ª, Rotavírus 2ª, Pneumocócica 2ª"],
-    ["m5", 150, "5 meses", "Meningocócica C 2ª"],
-    ["m6", 180, "6 meses", "Penta 3ª, VIP 3ª, Influenza, Covid-19 1ª"],
-    ["m7", 210, "7 meses", "Covid-19 2ª"],
-    ["m9", 270, "9 meses", "Febre amarela, Covid-19 3ª"],
-    ["m12", 365, "12 meses", "Pneumocócica reforço, Meningocócica ACWY, Tríplice viral 1ª"],
-    ["m15", 456, "15 meses", "DTP reforço, VIP reforço, Tríplice viral 2ª, Varicela, Hepatite A"],
+    ["bcg", 0, "Ao nascer", [["bcg", "BCG", "Dose única", "Formas graves de tuberculose"], ["hepb", "Hepatite B", "Dose ao nascer", "Hepatite B"]]],
+    ["m2", 60, "2 meses", [["penta1", "Penta (DTP + Hib + Hepatite B)", "1ª dose", "Difteria, tétano, coqueluche, Haemophilus b e hepatite B"], ["vip1", "VIP (poliomielite inativada)", "1ª dose", "Paralisia infantil"], ["rota1", "Rotavírus", "1ª dose", "Diarreia por rotavírus"], ["pneumo1", "Pneumocócica", "1ª dose", "Pneumonia, meningite e otite por pneumococo"]]],
+    ["m3", 90, "3 meses", [["menc1", "Meningocócica C", "1ª dose", "Meningite C"]]],
+    ["m4", 120, "4 meses", [["penta2", "Penta (DTP + Hib + Hepatite B)", "2ª dose", "Difteria, tétano, coqueluche, Haemophilus b e hepatite B"], ["vip2", "VIP (poliomielite inativada)", "2ª dose", "Paralisia infantil"], ["rota2", "Rotavírus", "2ª dose", "Diarreia por rotavírus"], ["pneumo2", "Pneumocócica", "2ª dose", "Pneumonia, meningite e otite por pneumococo"]]],
+    ["m5", 150, "5 meses", [["menc2", "Meningocócica C", "2ª dose", "Meningite C"]]],
+    ["m6", 180, "6 meses", [["penta3", "Penta (DTP + Hib + Hepatite B)", "3ª dose", "Difteria, tétano, coqueluche, Haemophilus b e hepatite B"], ["vip3", "VIP (poliomielite inativada)", "3ª dose", "Paralisia infantil"], ["flu1", "Influenza (gripe)", "1ª dose", "Gripe — na 1ª vez são 2 doses com 30 dias"], ["covid1", "Covid-19", "1ª dose", "Covid-19"]]],
+    ["m7", 210, "7 meses", [["covid2", "Covid-19", "2ª dose", "Covid-19"]]],
+    ["m9", 270, "9 meses", [["fa1", "Febre amarela", "1ª dose", "Febre amarela"], ["covid3", "Covid-19", "3ª dose", "Covid-19"]]],
+    ["m12", 365, "12 meses", [["pneumoR", "Pneumocócica", "Reforço", "Pneumonia, meningite e otite por pneumococo"], ["acwy", "Meningocócica ACWY", "Dose", "Meningites A, C, W e Y"], ["scr1", "Tríplice viral", "1ª dose", "Sarampo, caxumba e rubéola"]]],
+    ["m15", 456, "15 meses", [["dtp1", "DTP (tríplice bacteriana)", "1º reforço", "Difteria, tétano e coqueluche"], ["vipR1", "VIP (poliomielite)", "1º reforço", "Paralisia infantil"], ["scr2", "Tríplice viral", "2ª dose", "Sarampo, caxumba e rubéola"], ["var1", "Varicela", "1ª dose", "Catapora"], ["hepa", "Hepatite A", "Dose", "Hepatite A"]]],
+    ["a4", 1461, "4 anos", [["dtp2", "DTP (tríplice bacteriana)", "2º reforço", "Difteria, tétano e coqueluche"], ["vipR2", "VIP (poliomielite)", "2º reforço", "Paralisia infantil"], ["var2", "Varicela", "2ª dose", "Catapora"], ["faR", "Febre amarela", "Reforço", "Febre amarela"]]],
+  ],
+
+  // Semana a semana da gestação: [semana, título, texto, dica]
+  semanasGestacao: [
+    [36, "Reta final", "A Maya está quase pronta: ganha gordurinha toda semana e vai se encaixando de cabeça para baixo.", "Deixe a mala pronta e combine com o Bruno o caminho até a maternidade."],
+    [37, "A termo precoce", "Ela segue ganhando uns 200 g por semana e treina sugar, engolir e \"respirar\" o líquido amniótico. Em média tem uns 48 cm e 2,9 kg.", "Confira a mala e os documentos. Já pode imprimir o plano de parto."],
+    [38, "Quase lá", "Os órgãos estão formados; cérebro e pulmões continuam amadurecendo. Em média, 49 cm e 3,1 kg.", "As contrações de treino ficam mais frequentes. Use o cronômetro para ver se estão ficando regulares."],
+    [39, "Termo completo", "A partir de 39 semanas é termo completo. Ela tem cada vez menos espaço, mas os movimentos continuam: só mudam de jeito. Em média, 50 cm e 3,3 kg.", "Os movimentos não devem diminuir. Se perceber menos, faça a contagem de movimentos."],
+    [40, "Semana da DPP", "Poucos bebês nascem exatamente na data provável: o normal é chegar entre 37 e 42 semanas. Em média, 51 cm e 3,4 kg.", "Descanse, coma bem e mantenha as consultas em dia."],
+    [41, "Termo tardio", "A médica costuma pedir avaliações mais frequentes, como cardiotocografia e ultrassom, e conversar sobre indução.", "Siga o plano combinado com a médica e fique atenta aos movimentos."],
+    [42, "Pós-termo", "A equipe acompanha bem de perto e normalmente indica o nascimento.", "Mantenha contato com a maternidade e a médica."],
+  ],
+  // Semana a semana da bebê: [até o dia de vida, título, texto, dica]
+  semanasBebe: [
+    [6, "Primeira semana", "Perder até uns 10% do peso nos primeiros dias é esperado. Ela dorme de 16 a 18 horas por dia, em cochilos, e mama de 8 a 12 vezes.", "Teste do pezinho entre o 3º e o 5º dia. Conte as fraldas: a partir do 5º dia, 6 ou mais de xixi."],
+    [13, "Segunda semana", "Ela deve recuperar o peso de nascimento até umas 2 semanas de vida. O coto do umbigo costuma cair entre 1 e 3 semanas.", "Mantenha o coto limpo e seco, do jeito que a pediatra orientar."],
+    [20, "Terceira semana", "É comum um pico de crescimento por volta de 2 a 3 semanas: ela pode querer mamar bem mais por alguns dias. Isso ajuda a aumentar o leite.", "Muita mamada nesses dias é normal. Peça ajuda pro Bruno com o resto."],
+    [34, "Quarta e quinta semanas", "Ela olha por mais tempo para rostos e se acalma com a voz de vocês. O choro costuma aumentar nessa fase.", "Colo, som contínuo (aba Ninar) e embalar ajudam muito."],
+    [55, "Seis e sete semanas", "O choro costuma chegar ao pico por volta de 6 semanas e depois diminuir. O sorriso social, de propósito pra vocês, costuma aparecer entre 6 e 8 semanas.", "Quando vier o primeiro sorriso, guarde nos Momentos!"],
+    [89, "Dois meses", "Faz sons (os \"arrulhos\"), acompanha objetos com o olhar e sustenta melhor a cabeça de barriguinha para baixo (sempre acordada e com alguém olhando).", "Mês das vacinas de 2 meses. Leve a caderneta!"],
+    [119, "Três meses", "Descobre as mãos, leva tudo à boca, ri mais e firma bem o pescoço.", "Conversar e cantar com ela ajuda muito no desenvolvimento."],
+    [179, "Quatro e cinco meses", "Pode começar a rolar, agarra objetos e dá gargalhadas.", "Nunca deixe sozinha na cama ou no trocador: ela já pode virar."],
+    [99999, "Seis meses ou mais", "Senta com apoio e se prepara para começar a comer, sempre com orientação da pediatra.", "Converse com a pediatra sobre a introdução alimentar."],
   ],
 
   docs: [

@@ -7,7 +7,7 @@ const { chromium } = require('playwright');
   await p.goto('http://localhost:8765/');
   const sh = async n => p.screenshot({ path: `/home/claude/maira/shots/${n}.png` });
   await sh('01-boasvindas');
-  await p.fill('#bvDpp', '2026-11-20'); await p.fill('#bvTel', '15 99777-1234');
+  await p.fill('#bvDpp', '2026-11-20');
   await p.click('[data-a=inicioOk]'); await p.waitForTimeout(300); await sh('02-inicio-gestacao');
   await p.click('#nav [data-tab=parto]'); await p.click('[data-a=contr]',{force:true}); await p.waitForTimeout(1200); await sh('03-contracao');
   await p.click('[data-a=contr]',{force:true});
