@@ -1,0 +1,1 @@
+window.VERSAO = 0;

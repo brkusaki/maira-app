@@ -1,12 +1,46 @@
-name: Gerar APK
+name: Publicar app
+# Todo push na main publica a atualização automática (o app baixa sozinho).
+# Para gerar um APK novo, coloque [apk] na mensagem do commit ou rode manualmente.
 on:
   push:
     branches: [main]
   workflow_dispatch:
 permissions:
   contents: write
+  pages: write
+  id-token: write
+concurrency:
+  group: publicar
+  cancel-in-progress: false
 jobs:
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Marcar versão
+        run: echo "window.VERSAO = ${{ github.run_number }};" > www/versao.js
+      - name: Montar pacote de atualização
+        env:
+          N: ${{ github.run_number }}
+        run: |
+          mkdir -p site && cp -r www/* site/
+          (cd www && zip -qr ../site/www.zip .)
+          MSG="$(git log -1 --pretty=%s | sed 's/\[apk\]//g' | head -c 140)"
+          MSG="$MSG" node -e 'require("fs").writeFileSync("site/versao.json", JSON.stringify({versao:+process.env.N, novidades:process.env.MSG.trim()}))'
+          cat site/versao.json
+      - uses: actions/upload-pages-artifact@v3
+        with: { path: site }
+  deploy:
+    needs: web
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.d.outputs.page_url }}
+    steps:
+      - id: d
+        uses: actions/deploy-pages@v4
   apk:
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[apk]')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -14,18 +48,18 @@ jobs:
         with: { node-version: 22, cache: npm }
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: 21 }
+      - run: echo "window.VERSAO = ${{ github.run_number }};" > www/versao.js
       - run: npm ci
       - run: npx cap sync android
-      - name: Chave fixa (para as atualizações instalarem por cima)
-        run: mkdir -p ~/.android && cp android-keystore/debug.keystore ~/.android/debug.keystore
+      - name: Chave de assinatura (segredo do repositório)
+        env:
+          KS: ${{ secrets.ANDROID_DEBUG_KEYSTORE }}
+        run: mkdir -p ~/.android && echo "$KS" | base64 -d > ~/.android/debug.keystore
       - name: Compilar
         working-directory: android
         run: chmod +x gradlew && ./gradlew assembleDebug --no-daemon
       - run: cp android/app/build/outputs/apk/debug/app-debug.apk Maira-e-Maya.apk
-      - uses: actions/upload-artifact@v4
-        with: { name: Maira-e-Maya, path: Maira-e-Maya.apk }
-      - name: Publicar na página de Releases
-        uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ github.run_number }}
           name: Maíra & Maya v${{ github.run_number }}

@@ -171,6 +171,33 @@ function listaNotificacoes() {
 let filaNotif = Promise.resolve();
 function agendarDepois() { clearTimeout(agendarDepois.t); agendarDepois.t = setTimeout(() => { filaNotif = filaNotif.then(() => N.substituir(listaNotificacoes())); }, 600); }
 
+/* ---------------- Atualização automática ---------------- */
+const SITE = 'https://brkusaki.github.io/maira-app/';
+const VERSAO = window.VERSAO || 0;
+const UPD = plugin('CapacitorUpdater');
+if (UPD) UPD.notifyAppReady().catch(() => {});
+let PRONTA = null, ultimaBusca = 0;
+async function procurarAtualizacao(manual) {
+  if (!UPD) { if (manual) toast('A atualização automática funciona no app instalado'); return; }
+  if (!manual && Date.now() - ultimaBusca < 20 * MIN) return;
+  ultimaBusca = Date.now();
+  try {
+    const v = await (await fetch(SITE + 'versao.json?t=' + Date.now(), { cache: 'no-store' })).json();
+    if (!(v.versao > VERSAO)) { if (manual) toast('Já está na versão mais nova ✅'); return; }
+    if (!PRONTA || PRONTA.versao !== v.versao) {
+      if (manual) toast('Baixando atualização...', 6000);
+      const b = await UPD.download({ url: SITE + 'www.zip?v=' + v.versao, version: String(v.versao) });
+      await UPD.next({ id: b.id });
+      PRONTA = { id: b.id, versao: v.versao, novidades: v.novidades || '' };
+    }
+    render();
+  } catch (e) { console.warn('atualizacao', e); if (manual) toast('Sem internet agora. Tente mais tarde.'); }
+}
+function cardAtualizacao() {
+  if (!PRONTA) return '';
+  return `<div class="card linha entre" style="border-color:var(--verde)"><span class="linha"><i class="bolha b-verde">${ic('sparkles')}</i><span><b>Atualização pronta</b><br><small>${esc(PRONTA.novidades) || 'Melhorias no app'}</small></span></span><button class="btn verde mini" data-a="aplicarAtualiz">Atualizar</button></div>`;
+}
+
 /* ---------------- Navegação ---------------- */
 const V = { tab: 'inicio', sub: { maya: 'mamadas', mae: 'hoje', parto: 'contr', mais: 'docs' } };
 function ir(tab, sub) { V.tab = tab; if (sub) V.sub[tab] = sub; render(); window.scrollTo(0, 0); }
@@ -212,7 +239,7 @@ function capa(rot, grande, sub, extra = '') {
   <div class="txt"><div class="rotulo">${rot}</div><div class="grande">${grande}</div><div class="sub">${sub}</div>${extra}</div></div>`;
 }
 function vInicio() {
-  let h = '';
+  let h = cardAtualizacao();
   const g = gestacao();
   if (S.ativo.contr) h += banner('timer', 'alerta', 'Contração em andamento', S.ativo.contr, 'data-a="ir" data-tab="parto" data-sub="contr"');
   if (S.ativo.mamada) h += banner('milk', 'rosa', 'Mamando · ' + ladoNome(S.ativo.mamada.lado), S.ativo.mamada.ini, 'data-a="ir" data-tab="maya" data-sub="mamadas"');
@@ -583,6 +610,7 @@ function vAjustes() {
   <div class="grade"><button class="btn sec" data-a="compartilhar" data-q="backup">${ic('share-2')} Exportar</button><button class="btn sec" data-a="importar">${ic('plus')} Importar</button></div>
   ${nascida() ? '<button class="btn sec bloco" style="margin-top:10px" data-a="desfazNasc">Voltar para o modo gestação</button>' : ''}
   <button class="btn perigo bloco" style="margin-top:10px" data-a="zerar">Apagar todos os dados</button></div>
+  <div class="card"><div class="linha entre"><span><h3>Versão ${VERSAO || 'de teste'}</h3><small>${PRONTA ? 'Versão ' + PRONTA.versao + ' pronta para instalar' : 'O app se atualiza sozinho quando tem internet'}</small></span><button class="btn sec mini" data-a="${PRONTA ? 'aplicarAtualiz' : 'buscarAtualiz'}">${PRONTA ? 'Atualizar' : 'Procurar'}</button></div></div>
   <p class="mute" style="text-align:center">Feito com amor pelo ${esc(cfg.pai)} 💛</p>`;
 }
 
@@ -658,6 +686,8 @@ const A = {
   importar: () => modal(`<h2>${ic('plus')} Importar backup</h2><p class="mute">Cole aqui o texto do backup. Isso substitui os dados atuais.</p><textarea id="impTxt" style="min-height:200px"></textarea><button class="btn bloco" style="margin-top:12px" data-a="importarOk">Importar</button>`),
   importarOk: () => { try { const d = JSON.parse($('#impTxt').value); if (!d.cfg) throw 0; localStorage.setItem(LS, JSON.stringify(d)); location.reload(); } catch { toast('Backup inválido'); } },
   zerar: () => { if (confirm('Apagar TUDO? Isso não tem volta.') && confirm('Tem certeza mesmo?')) { localStorage.removeItem(LS); location.reload(); } },
+  buscarAtualiz: () => procurarAtualizacao(true),
+  aplicarAtualiz: () => { if (PRONTA && UPD) { toast('Atualizando...'); localStorage.setItem(LS, JSON.stringify(S)); UPD.set({ id: PRONTA.id }); } },
   luz: () => { $('#luz').hidden = false; },
   fotoTirar: () => { localStorage.removeItem('maira:fundo'); render(); },
   tema: el => { cfg.tema = el.dataset.t; salvar(); render(); },
@@ -748,7 +778,7 @@ function tick() {
 }
 setInterval(tick, 1000);
 setInterval(() => { if ($('#modal').hidden && !document.activeElement.matches('input,textarea,select')) render(); }, 60e3);
-document.addEventListener('visibilitychange', () => { if (!document.hidden) { render(); agendarDepois(); } });
+document.addEventListener('visibilitychange', () => { if (!document.hidden) { render(); agendarDepois(); procurarAtualizacao(); } });
 
 /* Luz noturna */
 $('#btnTema').addEventListener('click', () => { cfg.tema = document.documentElement.classList.contains('noite') ? 'claro' : 'noite'; salvar(); render(); toast(cfg.tema === 'noite' ? 'Tema escuro' : 'Tema claro'); });
@@ -773,6 +803,7 @@ obs.observe($('#view'), { childList: true });
 N.iniciar().then(agendarDepois);
 if (!NATIVO && 'serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
 render();
+setTimeout(() => procurarAtualizacao(), 3000);
 if (!cfg.iniciado) modal(`<h2>Oi, ${esc(cfg.mae)}! 💛</h2>
   <p>O ${esc(cfg.pai)} fez esse app só pra você e pra ${esc(cfg.bebe)}: contrações, mala da maternidade, mamadas, fraldas, remédios, vacinas e muito mais.</p>
   <label>Data provável do parto</label><input id="bvDpp" type="date" value="${esc(cfg.dpp)}">
