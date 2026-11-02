@@ -178,22 +178,39 @@ const SITE = 'https://brkusaki.github.io/maira-app/';
 const VERSAO = window.VERSAO || 0;
 const UPD = plugin('CapacitorUpdater');
 if (UPD) UPD.notifyAppReady().catch(() => {});
-let PRONTA = null, ultimaBusca = 0;
+let PRONTA = null, ultimaBusca = 0, ERRO_ATUALIZ = '';
+async function lerJSON(url) {
+  const HTTP = NATIVO && CAP.Plugins.CapacitorHttp;
+  if (HTTP) {
+    const r = await HTTP.get({ url, headers: { 'Cache-Control': 'no-cache' } });
+    if (r.status !== 200) throw new Error('servidor respondeu ' + r.status);
+    return typeof r.data === 'string' ? JSON.parse(r.data) : r.data;
+  }
+  const r = await fetch(url, { cache: 'no-store' }); if (!r.ok) throw new Error('servidor respondeu ' + r.status); return r.json();
+}
 async function procurarAtualizacao(manual) {
   if (!UPD) { if (manual) toast('A atualização automática funciona no app instalado'); return; }
   if (!manual && Date.now() - ultimaBusca < 20 * MIN) return;
   ultimaBusca = Date.now();
+  let etapa = 'verificar';
   try {
-    const v = await (await fetch(SITE + 'versao.json?t=' + Date.now(), { cache: 'no-store' })).json();
-    if (!(v.versao > VERSAO)) { if (manual) toast('Já está na versão mais nova ✅'); return; }
+    const v = await lerJSON(SITE + 'versao.json?t=' + Date.now());
+    if (!(v.versao > VERSAO)) { ERRO_ATUALIZ = ''; if (manual) toast('Já está na versão mais nova ✅'); return; }
     if (!PRONTA || PRONTA.versao !== v.versao) {
-      if (manual) toast('Baixando atualização...', 6000);
-      const b = await UPD.download({ url: SITE + 'www.zip?v=' + v.versao, version: String(v.versao) });
+      if (manual) toast('Baixando atualização...', 8000);
+      etapa = 'baixar';
+      const b = await UPD.download({ url: SITE + 'www.zip?v=' + v.versao, version: String(v.versao), checksum: v.sha256 || '' });
+      etapa = 'preparar';
       await UPD.next({ id: b.id });
       PRONTA = { id: b.id, versao: v.versao, novidades: v.novidades || '' };
     }
-    render();
-  } catch (e) { console.warn('atualizacao', e); if (manual) toast('Sem internet agora. Tente mais tarde.'); }
+    ERRO_ATUALIZ = ''; render();
+  } catch (e) {
+    const msg = (e && (e.message || e.errorMessage)) || String(e);
+    ERRO_ATUALIZ = `Erro ao ${etapa}: ${msg}`; console.warn('atualizacao', e);
+    if (manual) toast(ERRO_ATUALIZ.slice(0, 140), 7000);
+    if (V.tab === 'mais') render();
+  }
 }
 function cardAtualizacao() {
   if (!PRONTA) return '';
@@ -756,7 +773,7 @@ function vAjustes() {
   <div class="grade"><button class="btn sec" data-a="compartilhar" data-q="backup">${ic('share-2')} Exportar</button><button class="btn sec" data-a="importar">${ic('plus')} Importar</button></div>
   ${nascida() ? '<button class="btn sec bloco" style="margin-top:10px" data-a="desfazNasc">Voltar para o modo gestação</button>' : ''}
   <button class="btn perigo bloco" style="margin-top:10px" data-a="zerar">Apagar todos os dados</button></div>
-  <div class="card"><div class="linha entre"><span><h3>Versão ${VERSAO || 'de teste'}</h3><small>${PRONTA ? 'Versão ' + PRONTA.versao + ' pronta para instalar' : 'O app se atualiza sozinho quando tem internet'}</small></span><button class="btn sec mini" data-a="${PRONTA ? 'aplicarAtualiz' : 'buscarAtualiz'}">${PRONTA ? 'Atualizar' : 'Procurar'}</button></div></div>
+  <div class="card"><div class="linha entre"><span><h3>Versão ${VERSAO || 'de teste'}</h3><small>${PRONTA ? 'Versão ' + PRONTA.versao + ' pronta para instalar' : 'O app se atualiza sozinho quando tem internet'}</small>${ERRO_ATUALIZ ? `<br><small style="color:var(--alerta)">${esc(ERRO_ATUALIZ)}</small>` : ''}</span><button class="btn sec mini" data-a="${PRONTA ? 'aplicarAtualiz' : 'buscarAtualiz'}">${PRONTA ? 'Atualizar' : 'Procurar'}</button></div></div>
   <p class="mute" style="text-align:center">Feito com amor pelo ${esc(cfg.pai)} 💛</p>`;
 }
 

@@ -26,7 +26,8 @@ jobs:
           mkdir -p site && cp -r www/* site/
           (cd www && zip -qr ../site/www.zip .)
           MSG="$(git log -1 --pretty=%s | sed 's/\[apk\]//g' | head -c 140)"
-          MSG="$MSG" node -e 'require("fs").writeFileSync("site/versao.json", JSON.stringify({versao:+process.env.N, novidades:process.env.MSG.trim()}))'
+          SHA="$(sha256sum site/www.zip | cut -d' ' -f1)"
+          MSG="$MSG" SHA="$SHA" node -e 'require("fs").writeFileSync("site/versao.json", JSON.stringify({versao:+process.env.N, novidades:process.env.MSG.trim(), sha256:process.env.SHA}))'
           cat site/versao.json
       - uses: actions/upload-pages-artifact@v3
         with: { path: site }
